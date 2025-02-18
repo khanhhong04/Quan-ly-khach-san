@@ -5,12 +5,14 @@ Một khách sạn yêu cầu viết một phần mềm quản lý khách sạn.
 Chương trình cung cấp cho người dùng một tài khoản đăng nhập và đăng xuất để sử dụng hệ thống quản lý này. Với một tài khoản đăng nhập hệ thống sẽ xác định người đăng nhập là nhân viên hay quản lý để cung cấp quyền hạn tương ứng cho từng tài khoản đăng nhập.
 
 
+
 Nhân viên hay quản lý phải nhập các thông tin của khách hàng (tên, email, số điện thoại,…) khi khách đặt phòng hay thuê phòng trực tiếp. Khi một phòng được cho thuê hoặc có người đặt phòng thì nhân viên cập nhật tình trạng phòng. Khi đến ngày nhận phòng, nếu khách hàng đến nhận phòng thì nhân viên phải cập nhật lại tình trạng phòng là phòng đang được thuê; nếu khách hàng không đến nhận phòng đúng thời hạn hoặc hủy đặt phòng trước thời hạn thì nhân viên phải hủy thông tin khách hàng và cập nhật lại tình trạng phòng là phòng trống.
 Ngoài ra, nhân viên phải ghi nhận loại thiết bị và số lượng trong mỗi phòng. Nhân viên có quyền thêm, xóa và cập nhật lại các thiết bị trong phòng. Khi khách hàng thuê phòng nếu có yêu cầu thêm trang thiết bị trong phòng thì nhân viên phải bổ sung thông tin về trang thiết bị trong phòng nếu yêu cầu của khách được đáp ứng.
 Trong khách sạn còn có sẵn các dịch vụ (massage, tắm hơi,…) để phục vụ khách hàng. Khi khách có nhu cầu thì nhân viên phải ghi nhận tiền dịch vụ để tính vào tổng tiền.
 Khi khách hàng trả phòng, hệ thống sẽ tự động tính tiền thuê phòng, tiền dịch vụ và tổng tiền khách hàng phải trả. Nếu khách hàng có thắc mắc thì nhân viên cũng có thể cho khách hàng xem trực tiếp những chi phí mà khách hàng sử dụng đã lưu trên hệ thống.
 Đối với người quản lý, ngoài những quyền của nhân viên, người quản lý còn có thể cập nhật tên phòng, giá phòng và loại phòng khi có sự thay đổi. Ngoài ra, người quản lý còn cập nhật thông tin và tài khoản đăng nhập của nhân viên vào hệ thống.
 Hệ thống còn hỗ trợ chức năng báo cáo để nhân viên có thể báo cáo doanh thu của khách sạn theo tháng hoặc theo quý một cách chi tiết và rõ ràng.
+
 Yêu cầu hệ thống:
 1.	Hệ thống phải hỗ trợ việc đặt phòng nhiều loại phòng khác nhau như phòng tiêu chuẩn, phòng sang trọng, phòng gia đình, v.v.
 2.	Khách có thể tìm kiếm phòng trống và đặt bất kỳ phòng nào còn trống.
