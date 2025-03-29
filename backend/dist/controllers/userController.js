@@ -1,4 +1,5 @@
 const db = require("../config/database");
+const bcrypt = require('bcrypt'); // Thêm bcrypt để so sánh mật khẩu
 
 const getUsers = async (req, res) => {
     try {
@@ -16,12 +17,23 @@ const loginUser = async (req, res) => {
     }
 
     try {
-        const [results] = await db.execute("SELECT * FROM User WHERE TaiKhoan = ? AND MatKhau = ?", [username, password]);
-        if (results.length > 0) {
-            return res.json({ success: true, message: "Đăng nhập thành công!", user: results[0] });
-        } else {
-            return res.status(401).json({ success: false, message: "Sai thông tin đăng nhập!" });
+        // Tìm tài khoản theo TaiKhoan
+        const [results] = await db.execute("SELECT * FROM User WHERE TaiKhoan = ?", [username]);
+        if (results.length === 0) {
+            return res.status(401).json({ success: false, message: "Tài khoản không tồn tại!" });
         }
+
+        // Lấy thông tin tài khoản
+        const user = results[0];
+
+        // So sánh mật khẩu
+        const isMatch = await bcrypt.compare(password, user.MatKhau);
+        if (!isMatch) {
+            return res.status(401).json({ success: false, message: "Mật khẩu không đúng!" });
+        }
+
+        // Đăng nhập thành công
+        return res.json({ success: true, message: "Đăng nhập thành công!", user: user });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

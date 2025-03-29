@@ -15,5 +15,10 @@ const authMiddleware = (req, res, next) => {
         res.status(401).json({ success: false, message: "Token không hợp lệ!" });
     }
 };
+app.use(cors({
+    origin: "http://localhost:3000",  // Địa chỉ của frontend
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
 module.exports = authMiddleware;
