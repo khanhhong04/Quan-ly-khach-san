@@ -1,13 +1,8 @@
 const express = require("express");
-const { getUsers, loginUser } = require("../controllers/userController");
+const { getUsers } = require("../controllers/userController");  // Kiểm tra đường dẫn
 
 const router = express.Router();
 
-// Route lấy danh sách người dùng
-router.get("/", getUsers);
-
-// Route đăng nhập (Sửa lỗi 404)
-router.post("/login", loginUser);
+router.get("/users", getUsers);  // Đảm bảo `getUsers` đã được import
 
 module.exports = router;
-
