@@ -26,6 +26,6 @@ app.use("/api/rooms", roomRoutes);
 
 // Khởi động server
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+app.listen(PORT,  () => {
     console.log(`🚀 Server đang chạy trên cổng ${PORT}`);
 });
