@@ -1,6 +1,20 @@
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+const express = require('express');
+const cors = require('cors');
+const app = express();
 
+// Sử dụng middleware để phân tích JSON body
+app.use(express.json());
+
+// Cấu hình CORS
+app.use(cors({
+    origin: "*",  // Địa chỉ của frontend
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+// Middleware kiểm tra token
 const authMiddleware = (req, res, next) => {
     const token = req.header("Authorization");
     if (!token) {
@@ -15,10 +29,22 @@ const authMiddleware = (req, res, next) => {
         res.status(401).json({ success: false, message: "Token không hợp lệ!" });
     }
 };
-app.use(cors({
-    origin: "http://localhost:3000",  // Địa chỉ của frontend
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type", "Authorization"]
-}));
+
+// Route xác minh token
+app.post('/api/auth/verify-token', (req, res) => {
+    const { token } = req.body;
+
+    if (!token) {
+        return res.status(400).json({ success: false, message: 'Token không được cung cấp.' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).json({ success: false, message: 'Token không hợp lệ.' });
+        }
+
+        res.json({ success: true, message: 'Token hợp lệ', decoded });
+    });
+});
 
 module.exports = authMiddleware;

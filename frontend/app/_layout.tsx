@@ -5,6 +5,10 @@ export default function RootLayout() {
     <Stack>
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="auth/dangki" options={{ headerShown: false }} />
+      <Stack.Screen name="home/trangchu" options={{ headerShown: false }} />
+      <Stack.Screen name="profile/hoso" options={{ headerShown: false }} />
+      <Stack.Screen name="home/lich" options={{ headerShown: false }} />
+      <Stack.Screen name="home/datphong" options={{ headerShown: false }} />
     </Stack>
   );
 }

@@ -4,7 +4,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'reac
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = "http://192.168.20.15:3001/api/auth"; // Địa chỉ API backend
+const API_URL = "http://192.168.3.100:3001/api/auth"; // Địa chỉ API backend
 
 const LoginScreen: React.FC = () => {
   const [taiKhoan, setTaiKhoan] = useState<string>('');
@@ -29,6 +29,7 @@ const LoginScreen: React.FC = () => {
 
     try {
       const response = await axios.post(`${API_URL}/login`, requestData);
+
       console.log("✅ Phản hồi từ server:", response.data);
 
       if (response.data.success) {
