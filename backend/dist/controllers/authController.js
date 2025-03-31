@@ -50,7 +50,7 @@ const registerUser = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(MatKhau, 10);
         await db.execute("INSERT INTO User (HoTen, Email, SoDienThoai, TaiKhoan, MatKhau, RoleID) VALUES (?, ?, ?, ?, ?, ?)", 
-            [HoTen, Email, SoDienThoai, TaiKhoan, hashedPassword, 2]
+            [HoTen, Email, SoDienThoai, TaiKhoan, hashedPassword, 1]
         );
 
         return res.status(201).json({ message: "Đăng ký thành công!" });
