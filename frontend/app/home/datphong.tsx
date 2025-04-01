@@ -20,7 +20,7 @@ export default function HomeScreen() {
   };
 
   const handleGuestPress = () => {
-    router.push("/sophong");
+    router.push('/home/spsn');
   };
 
   const handleDatePress = (type: "checkIn" | "checkOut") => {
@@ -142,17 +142,17 @@ export default function HomeScreen() {
           > 
             <Icon
               name="calendar-outline"
-              size={15}
+              size={20}
               color="#666"
               style={styles.icon}
             />
-            <Text style={styles.dateText}>Ngày nhận phòng</Text>
+            <Text style={styles.dateText}>Ngày nhận</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.dateButton} onPress={() => router.push('/home/lich')}>
             {activeTab === "Qua đêm" ? (
               <>
-                <Icon name="calendar-outline" size={15} color="#666" style={styles.icon} />
-                <Text style={styles.dateText}>Ngày trả phòng</Text>
+                <Icon name="calendar-outline" size={20} color="#666" style={styles.icon} />
+                <Text style={styles.dateText}>Ngày trả</Text>
               </>
             ) : (
               <>
@@ -175,7 +175,7 @@ export default function HomeScreen() {
         )}
 
 
-        <TouchableOpacity style={styles.guestButton} onPress={() => router.push('/(tabs)/sophong')}>
+        <TouchableOpacity style={styles.guestButton} onPress={() => router.push('/home/spsn')}>
           <Icon
             name="person-outline"
             size={20}

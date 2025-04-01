@@ -10,34 +10,40 @@ export default function HoSo() {
   const router = useRouter();
   const [isTermsModalVisible, setIsTermsModalVisible] = useState(false);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  
+  // Khai báo userInfo ngay trong HoSo
+  const [userInfo, setUserInfo] = useState({
+    name: "",
+    email: "",
+    phone: "",
+  });
 
-
-  const [userInfo, setUserInfo] = useState({ name: "", email: "", phone: "" });
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        const name = await AsyncStorage.getItem("userName");
-        const email = await AsyncStorage.getItem("userEmail");
-        const phone = await AsyncStorage.getItem("userPhone");
-        console.log("Dữ liệu lấy từ AsyncStorage:", { name, email, phone });
-        setUserInfo({
-          name: name || "",
-          email: email || "",
-          phone: phone || "",
-        });
+        const userInfoString = await AsyncStorage.getItem("userInfo");
+        if (userInfoString) {
+          const user = JSON.parse(userInfoString);
+          setUserInfo({
+            name: user.HoTen || "",
+            email: user.Email || "",
+            phone: user.SoDienThoai || "",
+          });
+        }
       } catch (error) {
         console.error("Lỗi khi lấy thông tin người dùng", error);
       }
     };
-  
     fetchUserInfo();
   }, []);
-  
 
+  // Khai báo handleDeleteAccount trong HoSo
   const handleDeleteAccount = () => {
     console.log("Xóa tài khoản được thực hiện");
     setIsDeleteModalVisible(false);
   };
+
+  
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* Header */}
