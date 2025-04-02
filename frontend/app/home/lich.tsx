@@ -2,10 +2,11 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import dayjs from 'dayjs';
 import { Calendar, DateData } from 'react-native-calendars';
-import { useRouter } from 'expo-router';
-import 'dayjs/locale/vi'; // Thêm locale tiếng Việt cho dayjs
+import { useRouter,useLocalSearchParams } from 'expo-router';
+
 
 const CalendarScreen = () => {
+  const params = useLocalSearchParams();
   const today = dayjs().startOf('day'); // Đảm bảo ngày hiện tại được đặt về đầu ngày để so sánh chính xác
   const initialMonth = today.format('YYYY-MM-DD'); // Định dạng ngày hiện tại
   const [checkIn, setCheckIn] = useState<string | null>(null);
@@ -13,9 +14,8 @@ const CalendarScreen = () => {
   const [currentMonth, setCurrentMonth] = useState<string>(initialMonth); // Khởi tạo với tháng hiện tại
   const router = useRouter();
 
-  // Cập nhật dayjs để dùng tiếng Việt
-  dayjs.locale('vi');
-
+  
+  
   // Hàm xử lý chọn ngày
   const handleDayPress = (day: DateData) => {
     const selectedDate = dayjs(day.dateString).startOf('day'); // Đảm bảo so sánh chính xác
@@ -116,11 +116,20 @@ const CalendarScreen = () => {
   // Hàm xử lý khi nhấn nút OK
   const handleConfirm = () => {
     if (checkIn && checkOut) {
-      router.back(); // Quay lại màn hình trước đó
+      router.push({
+        pathname: "/home/datphong",
+        params: {
+          checkIn,
+          checkOut,
+          rooms: params.rooms?.toString() || "1",
+          adults: params.adults?.toString() || "1",
+        },
+      });
     } else {
-      alert('Vui lòng chọn cả ngày nhận và ngày trả phòng.');
+      alert("Vui lòng chọn cả ngày nhận và ngày trả phòng.");
     }
   };
+  
 
   return (
     <View style={styles.container}>
@@ -151,11 +160,12 @@ const CalendarScreen = () => {
 
       <Text style={styles.text}>
         {checkIn && checkOut
+        
           ? `Bạn đã chọn ${dayjs(checkOut).diff(dayjs(checkIn), 'day')} đêm`
           : 'Chọn ngày nhận và trả phòng'}
       </Text>
       
-      <TouchableOpacity style={styles.button} onPress={() => router.push('/(tabs)/trangchu')}>
+      <TouchableOpacity style={styles.button} onPress={handleConfirm}>
         <Text style={styles.buttonText}>
           OK ({checkIn && checkOut ? dayjs(checkOut).diff(dayjs(checkIn), 'day') : 0} Đêm)
         </Text>

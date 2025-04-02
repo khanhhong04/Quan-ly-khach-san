@@ -29,7 +29,6 @@ export default function SelectGuests() {
       if (adults < newRooms) {
         setAdults(newRooms);
       }
-      // Nếu số người hiện tại đã lớn hơn hoặc bằng số phòng mới, giữ nguyên số người
     } else if (rooms > 1) {
       const newRooms = rooms - 1;
       setRooms(newRooms);
@@ -48,10 +47,14 @@ export default function SelectGuests() {
   };
 
   const handleConfirm = () => {
-    // Điều hướng về màn hình chính (index) bằng đường dẫn tương đối
     router.push({
-      pathname: "../", // Quay lại route gốc của nhóm (tabs), tức là index.tsx
-      params: { rooms: rooms.toString(), adults: adults.toString() },
+      pathname: "/home/datphong",
+      params: {
+        rooms: rooms.toString(),
+        adults: adults.toString(),
+        checkIn: params.checkIn?.toString() || "", // Giữ lại checkIn từ params
+        checkOut: params.checkOut?.toString() || "", // Giữ lại checkOut từ params
+      },
     });
   };
 
@@ -115,7 +118,7 @@ export default function SelectGuests() {
         </View>
 
         {/* Nút OK */}
-        <TouchableOpacity style={styles.confirmButton} onPress={() => router.push('/home/phong')}>
+        <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
           <Text style={styles.confirmButtonText}>OK</Text>
         </TouchableOpacity>
       </View>
@@ -138,11 +141,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 20,
-  },
-  closeButton: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#000",
   },
   title: {
     fontSize: 18,
