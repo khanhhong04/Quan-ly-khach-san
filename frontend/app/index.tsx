@@ -1,15 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // ✅ Đã thêm useEffect
 import { useRouter } from 'expo-router';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = "http://192.168.20.15:3001/api/auth"; // Địa chỉ API backend
+const API_URL = "http://192.168.3.102:3001/api/auth"; // 🛑 Lưu ý IP có thể sai cú pháp (1666 vượt quá 255)
 
 const LoginScreen: React.FC = () => {
   const [taiKhoan, setTaiKhoan] = useState<string>('');
   const [matKhau, setMatKhau] = useState<string>('');
+  const [accountList, setAccountList] = useState<string[]>([]); // ✅ Danh sách tài khoản đã dùng
+  const [showAccountList, setShowAccountList] = useState<boolean>(false); // ✅ Trạng thái hiển thị dropdown
   const router = useRouter();
+
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      const savedAccounts = await AsyncStorage.getItem('accountHistory');
+      if (savedAccounts) {
+        setAccountList(JSON.parse(savedAccounts));
+      }
+    };
+    fetchAccounts(); // ✅ Load danh sách tài khoản đã đăng nhập
+  }, []);
 
   const handleLogin = async () => {
     console.log("📝 Nhập tài khoản:", taiKhoan);
@@ -38,6 +50,15 @@ const LoginScreen: React.FC = () => {
         await AsyncStorage.setItem('authToken', token);
         await AsyncStorage.setItem('userInfo', JSON.stringify(user));
 
+        // ✅ Lưu tài khoản vào danh sách nếu chưa có
+        const existingAccounts = await AsyncStorage.getItem('accountHistory');
+        let accounts = existingAccounts ? JSON.parse(existingAccounts) : [];
+
+        if (!accounts.includes(taiKhoan)) {
+          accounts.push(taiKhoan);
+          await AsyncStorage.setItem('accountHistory', JSON.stringify(accounts));
+        }
+
         Alert.alert('Thành công', 'Đăng nhập thành công!');
         router.push('/home/trangchu'); 
       } else {
@@ -46,7 +67,6 @@ const LoginScreen: React.FC = () => {
     } catch (error: any) {
       console.error("❌ Lỗi đăng nhập:", error);
       console.log("📥 Phản hồi lỗi từ server:", error.response?.data);
-
       Alert.alert('Lỗi', error.response?.data?.message || 'Không thể kết nối đến server.');
     }
   };
@@ -62,8 +82,30 @@ const LoginScreen: React.FC = () => {
           placeholder="Tài khoản"
           placeholderTextColor="#999"
           value={taiKhoan}
-          onChangeText={setTaiKhoan}
+          onFocus={() => setShowAccountList(true)} // ✅ Hiện dropdown khi focus
+          onChangeText={(text) => {
+            setTaiKhoan(text);
+            setShowAccountList(true);
+          }}
         />
+
+        {/* ✅ Hiển thị danh sách tài khoản đã dùng */}
+        {showAccountList && accountList.length > 0 && (
+          <View style={styles.dropdown}>
+            {accountList.map((account, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => {
+                  setTaiKhoan(account);
+                  setShowAccountList(false);
+                }}
+              >
+                <Text style={styles.dropdownItem}>{account}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         <TextInput
           style={styles.input}
           placeholder="Mật khẩu"
@@ -123,8 +165,24 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     borderRadius: 8,
     padding: 10,
-    marginBottom: 15,
+    marginBottom: 10,
     fontSize: 16,
+  },
+  dropdown: {
+    backgroundColor: '#fff',
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 5,
+    maxHeight: 120,
+    marginBottom: 10,
+    elevation: 2,
+    zIndex: 10,
+  },
+  dropdownItem: {
+    padding: 10,
+    fontSize: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   forgotPassword: {
     textAlign: 'right',

@@ -1,7 +1,9 @@
-const express = require("express");
-const { getRooms } = require("../controllers/roomController");
+const express = require('express');
 const router = express.Router();
+const roomController = require('../controllers/roomController');
 
-router.get("/", getRooms);
+// Định tuyến API
+router.post('/', roomController.getAvailableRooms);
+router.get('/:id', roomController.getRoomById); // Thêm route để lấy chi tiết phòng
 
 module.exports = router;

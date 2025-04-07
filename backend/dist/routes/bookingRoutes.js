@@ -1,9 +1,9 @@
-const express = require("express");
-const { getBookings, createBooking } = require("../controllers/bookingController");
-
+const express = require('express');
 const router = express.Router();
+const bookingController = require('../controllers/bookingController');
 
-router.get("/", getBookings);
-router.post("/", createBooking);
+// Định tuyến API
+router.post('/', bookingController.createBooking); // Tạo đặt phòng mới
+router.patch('/:id/cancel', bookingController.cancelBooking); // Hủy đặt phòng
 
-module.exports = router; // Đảm bảo export đúng
+module.exports = router;

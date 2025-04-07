@@ -9,6 +9,9 @@ export default function RootLayout() {
       <Stack.Screen name="profile/hoso" options={{ headerShown: false }} />
       <Stack.Screen name="home/lich" options={{ headerShown: false }} />
       <Stack.Screen name="home/datphong" options={{ headerShown: false }} />
+      <Stack.Screen name="home/timkiem" options={{ headerShown: false }} />
+      <Stack.Screen name="home/ttphong" options={{ headerShown: false }} />
+      <Stack.Screen name="home/datngay" options={{ headerShown: false }} />
     </Stack>
   );
 }
