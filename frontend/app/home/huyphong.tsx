@@ -1,272 +1,265 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  FlatList,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
-  SafeAreaView,
-  ActivityIndicator,
   Alert,
-} from "react-native";
-import Icon from "react-native-vector-icons/Ionicons";
-import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+  ActivityIndicator,
+  SafeAreaView,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
-// Định nghĩa interface cho đặt phòng
+const API_URL = 'http://192.168.1.134:3001/api';
+
 interface Booking {
-  MaDatPhong: string;
+  MaDatPhong: number;
   MaKH: number;
   NgayDat: string;
   NgayNhan: string;
   NgayTra: string;
-  TrangThai: string;
-  GhiChu: string | null;
-  MaPhong: number;
+  MaPhong: string;
   TenPhong?: string;
+  TrangThai: 'DA_THUE' | 'DANG_SU_DUNG' | 'TRONG' | 'DA_HUY';
+  GhiChu?: string;
 }
 
-export default function CancelBooking() {
-  const router = useRouter();
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isCanceling, setIsCanceling] = useState<string | null>(null);
+type RootParamList = {
+  Login: undefined;
+  HuyPhong: undefined;
+};
 
-  // Lấy MaKH từ AsyncStorage và lấy danh sách đặt phòng
+const HuyPhongScreen: React.FC = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootParamList>>();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<number | null>(null);
+
   useEffect(() => {
-    const fetchBookings = async () => {
-      setIsLoading(true);
+    const fetchUserAndBookings = async () => {
       try {
-        // Lấy MaKH từ AsyncStorage
-        const userData = await AsyncStorage.getItem("user");
-        console.log("User data from AsyncStorage:", userData);
-        if (!userData) {
-          Alert.alert("Lỗi", "Vui lòng đăng nhập để xem danh sách đặt phòng.", [
-            { text: "OK", onPress: () => router.replace("/dangnhap") },
+        const token = await AsyncStorage.getItem('authToken');
+        const userInfo = await AsyncStorage.getItem('userInfo');
+        if (!token || !userInfo) {
+          Alert.alert('Lỗi', 'Vui lòng đăng nhập lại', [
+            { text: 'OK', onPress: () => navigation.replace('Login') },
           ]);
           return;
         }
 
-        const user = JSON.parse(userData);
-        console.log("Parsed user:", user);
-        const MaKH = user.MaKH;
-        console.log("MaKH:", MaKH);
+        const user = JSON.parse(userInfo);
+        setUserId(user.id);
 
-        if (!MaKH) {
-          throw new Error("Không tìm thấy mã khách hàng.");
+        const response = await fetch(`${API_URL}/bookings`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        const result = await response.json();
+        console.log('Phản hồi API bookings:', result);
+
+        if (response.ok) {
+          setBookings(result.bookings || []);
+        } else {
+          Alert.alert('Lỗi', result.message || 'Không thể tải danh sách đặt phòng');
         }
-
-        // Gọi API để lấy danh sách đặt phòng
-        const res = await fetch(
-          `http://192.168.1.134:3001/api/bookings?MaKH=${MaKH}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        const result = await res.json();
-        console.log("API response:", result);
-        if (!res.ok) {
-          throw new Error(result.message || "Không thể tải danh sách đặt phòng.");
-        }
-
-        setBookings(result);
-      } catch (err: any) {
-        console.error("Error fetching bookings:", err);
-        Alert.alert(
-          "Lỗi",
-          err.message || "Đã xảy ra lỗi khi tải danh sách đặt phòng.",
-          [{ text: "OK" }]
-        );
+      } catch (error) {
+        console.error('Lỗi khi tải danh sách đặt phòng:', error);
+        Alert.alert('Lỗi', 'Đã xảy ra lỗi khi tải danh sách đặt phòng');
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
-    fetchBookings();
-  }, []);
+    fetchUserAndBookings();
+  }, [navigation]);
 
-  // Xử lý hủy đặt phòng
-  const handleCancelBooking = async (MaDatPhong: string) => {
-    setIsCanceling(MaDatPhong);
+  const cancelBooking = async (bookingId: number) => {
     try {
-      const res = await fetch(
-        `http://192.168.1.134:3001/api/bookings/${MaDatPhong}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const result = await res.json();
-      if (!res.ok) {
-        throw new Error(result.message || "Hủy đặt phòng thất bại. Vui lòng thử lại.");
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        Alert.alert('Lỗi', 'Vui lòng đăng nhập lại');
+        return;
       }
 
-      // Cập nhật danh sách đặt phòng sau khi hủy
-      setBookings((prevBookings) =>
-        prevBookings.filter((booking) => booking.MaDatPhong !== MaDatPhong)
-      );
+      const response = await fetch(`${API_URL}/bookings/${bookingId}/cancel`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      Alert.alert("Thành công", "Hủy đặt phòng thành công!", [
-        { text: "OK" },
-      ]);
-    } catch (err: any) {
-      console.error("Error canceling booking:", err);
-      Alert.alert(
-        "Lỗi",
-        err.message || "Đã xảy ra lỗi khi hủy đặt phòng. Vui lòng thử lại.",
-        [{ text: "OK" }]
-      );
-    } finally {
-      setIsCanceling(null);
+      const result = await response.json();
+      console.log('Phản hồi API cancel:', { bookingId, result });
+
+      if (response.ok) {
+        Alert.alert('Thành công', 'Hủy đặt phòng thành công');
+        setBookings((prev) =>
+          prev.map((booking) =>
+            booking.MaDatPhong === bookingId
+              ? { ...booking, TrangThai: 'DA_HUY' }
+              : booking
+          )
+        );
+      } else {
+        Alert.alert('Lỗi', result.message || 'Không thể hủy đặt phòng');
+      }
+    } catch (error) {
+      console.error('Lỗi khi hủy phòng:', error);
+      Alert.alert('Lỗi', 'Đã xảy ra lỗi khi hủy phòng');
     }
+  };
+
+  const confirmCancel = (bookingId: number) => {
+    Alert.alert(
+      'Xác nhận',
+      'Bạn có chắc muốn hủy đặt phòng này?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Đồng ý',
+          onPress: () => cancelBooking(bookingId),
+          style: 'destructive',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const renderBookingItem = ({ item }: { item: Booking }) => {
+    const canCancel = item.TrangThai === 'DA_THUE' || item.TrangThai === 'DANG_SU_DUNG';
+    return (
+      <View style={styles.bookingItem}>
+        <View style={styles.bookingInfo}>
+          <Text style={styles.bookingText}>Mã đặt phòng: {item.MaDatPhong}</Text>
+          <Text style={styles.bookingText}>Phòng: {item.TenPhong || item.MaPhong}</Text>
+          <Text style={styles.bookingText}>
+            Ngày nhận: {new Date(item.NgayNhan).toLocaleDateString('vi-VN')}
+          </Text>
+          <Text style={styles.bookingText}>
+            Ngày trả: {new Date(item.NgayTra).toLocaleDateString('vi-VN')}
+          </Text>
+          <Text style={styles.bookingText}>
+            Trạng thái: {item.TrangThai === 'DA_THUE' ? 'Đã thuê' : 
+                        item.TrangThai === 'DANG_SU_DUNG' ? 'Đang sử dụng' : 
+                        item.TrangThai === 'TRONG' ? 'Trống' : 'Đã hủy'}
+          </Text>
+          {item.GhiChu && <Text style={styles.bookingText}>Ghi chú: {item.GhiChu}</Text>}
+        </View>
+        {canCancel && (
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => confirmCancel(item.MaDatPhong)}
+          >
+            <Text style={styles.cancelButtonText}>Hủy</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Icon name="arrow-back" size={24} color="#000" />
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hủy đặt phòng</Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.headerTitle}>Hủy Đặt Phòng</Text>
       </View>
-
-      {/* Danh sách đặt phòng */}
-      <ScrollView style={styles.scrollContainer}>
-        {isLoading ? (
-          <ActivityIndicator size="large" color="#8A2BE2" style={styles.loader} />
-        ) : bookings.length === 0 ? (
-          <Text style={styles.noBookings}>Không có đặt phòng nào.</Text>
-        ) : (
-          bookings.map((booking) => (
-            <View key={booking.MaDatPhong} style={styles.bookingCard}>
-              <Text style={styles.bookingTitle}>Phòng {booking.MaPhong} - {booking.TenPhong || "Không xác định"}</Text>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Ngày đặt:</Text>
-                <Text style={styles.infoValue}>{booking.NgayDat}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Ngày nhận:</Text>
-                <Text style={styles.infoValue}>{booking.NgayNhan}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Ngày trả:</Text>
-                <Text style={styles.infoValue}>{booking.NgayTra}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Trạng thái:</Text>
-                <Text style={[styles.infoValue, { color: booking.TrangThai === "DA_HUY" ? "#FF4500" : "#1E90FF" }]}>
-                  {booking.TrangThai === "DA_HUY" ? "Đã hủy" : "Đã thuê"}
-                </Text>
-              </View>
-              {booking.GhiChu && (
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Ghi chú:</Text>
-                  <Text style={styles.infoValue}>{booking.GhiChu}</Text>
-                </View>
-              )}
-              {booking.TrangThai !== "DA_HUY" && (
-                <TouchableOpacity
-                  style={[styles.cancelButton, isCanceling === booking.MaDatPhong && styles.disabledButton]}
-                  onPress={() => handleCancelBooking(booking.MaDatPhong)}
-                  disabled={isCanceling === booking.MaDatPhong}
-                >
-                  {isCanceling === booking.MaDatPhong ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={styles.cancelButtonText}>Hủy đặt phòng</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-            </View>
-          ))
-        )}
-      </ScrollView>
+      {loading ? (
+        <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+      ) : bookings.length === 0 ? (
+        <Text style={styles.emptyText}>Bạn chưa có đặt phòng nào.</Text>
+      ) : (
+        <FlatList
+          data={bookings}
+          renderItem={renderBookingItem}
+          keyExtractor={(item) => item.MaDatPhong.toString()}
+          contentContainerStyle={styles.listContainer}
+        />
+      )}
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f4f4f4",
+    backgroundColor: '#f5f5f5',
   },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 20,
-    paddingTop: 40,
-    backgroundColor: "#fff",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  backButton: {
+    padding: 8,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  scrollContainer: {
-    flex: 1,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginLeft: 16,
   },
   loader: {
-    marginTop: 20,
+    flex: 1,
+    justifyContent: 'center',
   },
-  noBookings: {
+  emptyText: {
     fontSize: 16,
-    color: "#666",
-    textAlign: "center",
+    color: '#666',
+    textAlign: 'center',
     marginTop: 20,
   },
-  bookingCard: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    marginHorizontal: 20,
-    marginBottom: 15,
-    padding: 15,
-    shadowColor: "#000",
+  listContainer: {
+    padding: 16,
+  },
+  bookingItem: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
+    shadowRadius: 4,
   },
-  bookingTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
+  bookingInfo: {
+    flex: 1,
   },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  infoLabel: {
-    fontSize: 16,
-    color: "#666",
-  },
-  infoValue: {
-    fontSize: 16,
-    color: "#333",
-    fontWeight: "500",
+  bookingText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 4,
   },
   cancelButton: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: "#FF4500",
-    borderRadius: 5,
-    alignItems: "center",
-  },
-  disabledButton: {
-    backgroundColor: "#ccc",
+    backgroundColor: '#FF3B30',
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignSelf: 'flex-start',
+    marginTop: 8,
   },
   cancelButtonText: {
-    fontSize: 16,
-    color: "#fff",
-    fontWeight: "bold",
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
+
+export default HuyPhongScreen;
