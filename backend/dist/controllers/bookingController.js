@@ -33,13 +33,12 @@ const createBooking = async (req, res) => {
         OR (NgayNhan <= ? AND NgayTra >= ?)
         OR (NgayNhan >= ? AND NgayTra <= ?)
       )
-      AND TrangThai = 'DA_THUE';
+      AND TrangThai IN ('DA_THUE', 'DANG_SU_DUNG');
     `;
     const [existingBookings] = await db.query(checkAvailabilityQuery, [
       MaPhong,
       NgayTra,
       NgayNhan,
-      NgayTra,
       NgayTra,
       NgayNhan,
       NgayNhan,
@@ -50,36 +49,24 @@ const createBooking = async (req, res) => {
       return res.status(400).json({ message: 'Room is already booked for the selected dates' });
     }
 
-    // Kiểm tra trạng thái phòng trong bảng phong
-    const checkRoomStatusQuery = `
-      SELECT TrangThai
+    // Kiểm tra xem phòng có tồn tại không
+    const checkRoomQuery = `
+      SELECT MaPhong
       FROM phong
       WHERE MaPhong = ?;
     `;
-    const [roomStatus] = await db.query(checkRoomStatusQuery, [MaPhong]);
+    const [room] = await db.query(checkRoomQuery, [MaPhong]);
 
-    if (roomStatus.length === 0) {
+    if (room.length === 0) {
       return res.status(404).json({ message: 'Room not found' });
     }
 
-    if (roomStatus[0].TrangThai !== 'TRONG') {
-      return res.status(400).json({ message: 'Room is not available for booking' });
-    }
-
-    // Thêm bản ghi vào bảng datphong
+    // Thêm bản ghi vào bảng datphong với trạng thái DA_THUE
     const insertBookingQuery = `
       INSERT INTO datphong (MaKH, NgayDat, NgayNhan, NgayTra, TrangThai, GhiChu, MaPhong)
       VALUES (?, ?, ?, ?, 'DA_THUE', ?, ?);
     `;
     const [result] = await db.query(insertBookingQuery, [MaKH, NgayDat, NgayNhan, NgayTra, GhiChu || null, MaPhong]);
-
-    // Cập nhật trạng thái trong bảng phong
-    const updateRoomQuery = `
-      UPDATE phong
-      SET TrangThai = 'DANG_SU_DUNG'
-      WHERE MaPhong = ?;
-    `;
-    await db.query(updateRoomQuery, [MaPhong]);
 
     res.status(201).json({ message: 'Booking created successfully', bookingId: result.insertId });
   } catch (err) {
@@ -111,21 +98,13 @@ const cancelBooking = async (req, res) => {
       return res.status(400).json({ message: 'Booking is already canceled' });
     }
 
-    // Cập nhật trạng thái đặt phòng thành HUY
+    // Cập nhật trạng thái đặt phòng thành DA_HUY
     const updateBookingQuery = `
       UPDATE datphong
       SET TrangThai = 'DA_HUY'
       WHERE MaDatPhong = ?;
     `;
     await db.query(updateBookingQuery, [id]);
-
-    // Cập nhật trạng thái phòng thành TRONG
-    const updateRoomQuery = `
-      UPDATE phong
-      SET TrangThai = 'TRONG'
-      WHERE MaPhong = ?;
-    `;
-    await db.query(updateRoomQuery, [booking[0].MaPhong]);
 
     res.status(200).json({ message: 'Booking canceled successfully' });
   } catch (err) {

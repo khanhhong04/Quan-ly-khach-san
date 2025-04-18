@@ -2,9 +2,9 @@ const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const path = require('path');
+const { setupCronJobs } = require('./cron'); // Import cron job setup
 
 // Debug: Kiểm tra kiểu dữ liệu của routes
-
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
@@ -27,9 +27,12 @@ app.use("/api/users", userRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/rooms", roomRoutes);
 
+// Khởi động cron jobs
+setupCronJobs();
+
 
 // Khởi động server
 const PORT = process.env.PORT || 3001;
-app.listen(PORT,'0.0.0.0',  () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server đang chạy trên cổng ${PORT}`);
 });

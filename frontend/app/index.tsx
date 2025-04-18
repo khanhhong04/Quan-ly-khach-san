@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react'; // ✅ Đã thêm useEffect
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = "http://192.168.3.102:3001/api/auth"; // 🛑 Lưu ý IP có thể sai cú pháp (1666 vượt quá 255)
+const API_URL = "http://192.168.1.134:3001/api/auth";
 
 const LoginScreen: React.FC = () => {
   const [taiKhoan, setTaiKhoan] = useState<string>('');
   const [matKhau, setMatKhau] = useState<string>('');
-  const [accountList, setAccountList] = useState<string[]>([]); // ✅ Danh sách tài khoản đã dùng
-  const [showAccountList, setShowAccountList] = useState<boolean>(false); // ✅ Trạng thái hiển thị dropdown
+  const [accountList, setAccountList] = useState<string[]>([]);
+  const [showAccountList, setShowAccountList] = useState<boolean>(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -20,7 +20,7 @@ const LoginScreen: React.FC = () => {
         setAccountList(JSON.parse(savedAccounts));
       }
     };
-    fetchAccounts(); // ✅ Load danh sách tài khoản đã đăng nhập
+    fetchAccounts();
   }, []);
 
   const handleLogin = async () => {
@@ -50,16 +50,16 @@ const LoginScreen: React.FC = () => {
         await AsyncStorage.setItem('authToken', token);
         await AsyncStorage.setItem('userInfo', JSON.stringify(user));
 
-        // ✅ Lưu tài khoản vào danh sách nếu chưa có
         const existingAccounts = await AsyncStorage.getItem('accountHistory');
         let accounts = existingAccounts ? JSON.parse(existingAccounts) : [];
 
         if (!accounts.includes(taiKhoan)) {
           accounts.push(taiKhoan);
           await AsyncStorage.setItem('accountHistory', JSON.stringify(accounts));
+          setAccountList(accounts);
         }
 
-        Alert.alert('Thành công', 'Đăng nhập thành công!');
+      
         router.push('/home/trangchu'); 
       } else {
         Alert.alert('Lỗi', response.data.message || 'Sai thông tin đăng nhập');
@@ -68,6 +68,16 @@ const LoginScreen: React.FC = () => {
       console.error("❌ Lỗi đăng nhập:", error);
       console.log("📥 Phản hồi lỗi từ server:", error.response?.data);
       Alert.alert('Lỗi', error.response?.data?.message || 'Không thể kết nối đến server.');
+    }
+  };
+
+  const handleDeleteAccount = async (accountToDelete: string) => {
+    const updatedAccounts = accountList.filter(account => account !== accountToDelete);
+    setAccountList(updatedAccounts);
+    await AsyncStorage.setItem('accountHistory', JSON.stringify(updatedAccounts));
+    
+    if (taiKhoan === accountToDelete) {
+      setTaiKhoan('');
     }
   };
 
@@ -82,26 +92,33 @@ const LoginScreen: React.FC = () => {
           placeholder="Tài khoản"
           placeholderTextColor="#999"
           value={taiKhoan}
-          onFocus={() => setShowAccountList(true)} // ✅ Hiện dropdown khi focus
+          onFocus={() => setShowAccountList(true)}
           onChangeText={(text) => {
             setTaiKhoan(text);
             setShowAccountList(true);
           }}
         />
 
-        {/* ✅ Hiển thị danh sách tài khoản đã dùng */}
         {showAccountList && accountList.length > 0 && (
           <View style={styles.dropdown}>
             {accountList.map((account, index) => (
-              <TouchableOpacity
-                key={index}
-                onPress={() => {
-                  setTaiKhoan(account);
-                  setShowAccountList(false);
-                }}
-              >
-                <Text style={styles.dropdownItem}>{account}</Text>
-              </TouchableOpacity>
+              <View key={index} style={styles.dropdownItemContainer}>
+                <TouchableOpacity
+                  style={styles.dropdownItemText}
+                  onPress={() => {
+                    setTaiKhoan(account);
+                    setShowAccountList(false);
+                  }}
+                >
+                  <Text style={styles.dropdownItem}>{account}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => handleDeleteAccount(account)}
+                >
+                  <Text style={styles.deleteButtonText}>×</Text>
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
         )}
@@ -179,10 +196,28 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   dropdownItem: {
-    padding: 10,
     fontSize: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+  },
+  dropdownItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 5,
+  },
+  dropdownItemText: {
+    flex: 1,
+    padding: 10,
+  },
+  deleteButton: {
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    fontSize: 20,
+    color: '#808080', // Đổi từ '#ff4444' (đỏ) sang '#808080' (xám)
+    fontWeight: 'bold',
   },
   forgotPassword: {
     textAlign: 'right',

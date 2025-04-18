@@ -108,7 +108,29 @@ const resetPassword = async (req, res) => {
     } catch (error) {
         res.status(400).json({ message: "Token không hợp lệ hoặc đã hết hạn!" });
     }
+    
 };
+const verifyToken = async (req, res) => {
+    const token = req.header("Authorization");
+    console.log("Verify-token - Token nhận được:", token);
+    if (!token) {
+      return res.status(401).json({ success: false, message: "Không có token" });
+    }
+  
+    try {
+      let cleanToken = token;
+      if (token.startsWith("Bearer ")) {
+        cleanToken = token.replace("Bearer ", "");
+      }
+      const decoded = jwt.verify(cleanToken, process.env.JWT_SECRET);
+      console.log("Verify-token - Decoded:", decoded);
+      res.json({ success: true, message: "Token hợp lệ", decoded });
+    } catch (err) {
+      console.error("Verify-token - Lỗi:", err.message);
+      res.status(401).json({ success: false, message: `Token không hợp lệ: ${err.message}` });
+    }
+  };
+  
 
 // Export các hàm
-module.exports = { loginUser, registerUser, forgotPassword, resetPassword };
+module.exports = { loginUser, registerUser, forgotPassword, resetPassword,verifyToken, };

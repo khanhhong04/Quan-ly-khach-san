@@ -317,7 +317,7 @@ export default function TrangChu() {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.tabItem}
-          onPress={() => router.push('/home/ttphong')}
+          onPress={() => router.push('/home/huyphong')}
         >
           <Icon name="business-outline" size={24} color="#666" />
           <Text style={styles.tabText}>Phòng</Text>

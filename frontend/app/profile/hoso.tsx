@@ -1,21 +1,57 @@
 import React, { useState, useEffect } from "react";
-import {View,Text,StyleSheet,TouchableOpacity,Image,Modal,ScrollView,
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
+  Modal,
+  Animated,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context"; // Sửa import
 import Icon from "react-native-vector-icons/Ionicons";
-import AsyncStorage from "@react-native-async-storage/async-storage"; // Import đúng
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 
 export default function HoSo() {
   const router = useRouter();
   const [isTermsModalVisible, setIsTermsModalVisible] = useState(false);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-  
+
   // Khai báo userInfo ngay trong HoSo
   const [userInfo, setUserInfo] = useState({
     name: "",
     email: "",
     phone: "",
+  });
+
+  // Animated value for the waving effect
+  const waveAnimation = new Animated.Value(0);
+
+  // Animation for the waving effect
+  useEffect(() => {
+    const wave = () => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(waveAnimation, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(waveAnimation, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    };
+    wave();
+  }, [waveAnimation]);
+
+  // Interpolate the rotation value for the waving effect
+  const waveRotate = waveAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["15deg", "45deg"],
   });
 
   useEffect(() => {
@@ -37,13 +73,16 @@ export default function HoSo() {
     fetchUserInfo();
   }, []);
 
-  // Khai báo handleDeleteAccount trong HoSo
   const handleDeleteAccount = () => {
     console.log("Xóa tài khoản được thực hiện");
     setIsDeleteModalVisible(false);
   };
 
-  
+  const handleLogout = () => {
+    console.log("Đăng xuất được thực hiện");
+    router.push("/");
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* Header */}
@@ -51,20 +90,20 @@ export default function HoSo() {
         <TouchableOpacity onPress={() => router.back()}>
           <Icon name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hồ Sơ</Text>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>Chào Mừng Bạn</Text>
+          <Animated.View
+            style={[styles.wavingIcon, { transform: [{ rotate: waveRotate }] }]}
+          >
+            <Icon name="hand-right-outline" size={24} color="#fff" />
+          </Animated.View>
+        </View>
+        <View style={styles.emptySpace} />
       </View>
 
-      {/* Avatar */}
-      <View style={styles.avatarContainer}>
-        <Image
-          source={{ uri: "https://via.placeholder.com/100" }}
-          style={styles.avatar}
-        />
-      </View>
-
-      {/* Thông tin cá nhân */}
+      {/* Thông tin tài khoản */}
       <View style={styles.infoContainer}>
-        <Text style={styles.sectionTitle}>THÔNG TIN CÁ NHÂN</Text>
+        <Text style={styles.sectionTitle}>THÔNG TIN TÀI KHOẢN</Text>
         <View style={styles.infoRow}>
           <Icon name="person-outline" size={20} color="#666" />
           <Text style={styles.infoLabel}>Tên đầy đủ:</Text>
@@ -82,7 +121,7 @@ export default function HoSo() {
         </View>
       </View>
 
-      {/* Nút Điều khoản sử dụng */}
+      {/* Điều khoản sử dụng */}
       <View style={styles.actionsContainer}>
         <TouchableOpacity
           style={styles.actionButton}
@@ -98,12 +137,13 @@ export default function HoSo() {
         style={styles.deleteButton}
         onPress={() => setIsDeleteModalVisible(true)}
       >
-        <Text style={styles.deleteButtonText}>Xóa tài khoản</Text>
+        <Icon name="person-outline" size={20} color="#000" />
+        <Text style={styles.deleteButtonText}>Xóa tài khoản của tôi</Text>
       </TouchableOpacity>
 
       {/* Nút Đăng xuất */}
-      <TouchableOpacity style={styles.logoutButton} onPress={() => router.push('/')}>
-        <Text style={styles.logoutButtonText} >Đăng xuất</Text>
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.logoutButtonText}>Đăng xuất</Text>
       </TouchableOpacity>
 
       {/* Modal Điều khoản sử dụng */}
@@ -118,7 +158,7 @@ export default function HoSo() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Điều khoản sử dụng</Text>
             </View>
-            <ScrollView style={styles.modalContent}>
+            <View style={styles.modalContent}>
               <Text style={styles.modalSectionTitle}>
                 1. Chấm dứt tài khoản
               </Text>
@@ -147,7 +187,7 @@ export default function HoSo() {
               >
                 <Text style={styles.closeButtonText}>Đóng</Text>
               </TouchableOpacity>
-            </ScrollView>
+            </View>
           </View>
         </View>
       </Modal>
@@ -192,30 +232,34 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     padding: 20,
     paddingTop: 40,
-    backgroundColor: "#00C4B4",
+    backgroundColor: "#2C3E50",
+  },
+  headerTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#fff",
-    marginLeft: 10,
+    textAlign: "center",
   },
-  avatarContainer: {
-    alignItems: "center",
-    marginVertical: 20,
+  wavingIcon: {
+    marginLeft: 8,
   },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#e0e0e0",
+  emptySpace: {
+    width: 24,
   },
   infoContainer: {
     backgroundColor: "#fff",
     marginHorizontal: 10,
+    marginVertical: 5,
     borderRadius: 10,
     padding: 15,
   },
@@ -265,19 +309,22 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#FF0000",
+    borderColor: "#000",
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
   },
   deleteButtonText: {
     fontSize: 16,
-    color: "#FF0000",
+    color: "#000",
+    marginLeft: 10,
   },
   logoutButton: {
     marginHorizontal: 10,
     marginVertical: 10,
     padding: 15,
     borderRadius: 10,
-    backgroundColor: "#FF0000",
+    backgroundColor: "#000",
     alignItems: "center",
   },
   logoutButtonText: {
@@ -291,48 +338,54 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalContainer: {
-    width: "80%",
     backgroundColor: "#fff",
+    width: "90%",
+    maxHeight: "80%",
     borderRadius: 10,
     padding: 20,
   },
   modalHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
+    marginBottom: 20,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#000",
+    color: "#333",
+    textAlign: "center",
   },
   modalContent: {
-    marginTop: 10,
+    minHeight: 200,
   },
   modalSectionTitle: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "bold",
+    color: "#333",
     marginTop: 10,
+    marginBottom: 5,
   },
   modalText: {
     fontSize: 14,
     color: "#333",
-    marginVertical: 5,
+    marginBottom: 10,
   },
   closeButton: {
     marginTop: 20,
     padding: 10,
-    backgroundColor: "#ddd",
+    backgroundColor: "#00C4B4",
     borderRadius: 5,
     alignItems: "center",
   },
   closeButtonText: {
     fontSize: 16,
-    color: "#000",
+    color: "#fff",
+    fontWeight: "bold",
   },
   deleteModalContainer: {
-    width: "80%",
     backgroundColor: "#fff",
+    width: "80%",
     borderRadius: 10,
     padding: 20,
     alignItems: "center",
@@ -340,8 +393,9 @@ const styles = StyleSheet.create({
   deleteModalTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#000",
+    color: "#333",
     marginBottom: 20,
+    textAlign: "center",
   },
   deleteModalButtons: {
     flexDirection: "row",
@@ -359,10 +413,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF0000",
   },
   deleteModalButtonNo: {
-    backgroundColor: "#ccc",
+    backgroundColor: "#00C4B4",
   },
   deleteModalButtonText: {
     fontSize: 16,
     color: "#fff",
+    fontWeight: "bold",
   },
 });

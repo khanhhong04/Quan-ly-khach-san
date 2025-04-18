@@ -14,7 +14,6 @@ import Icon from "react-native-vector-icons/Ionicons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Định nghĩa interface cho Room (đồng bộ với timkiem.tsx và ttphong.tsx)
 interface Room {
   id: string;
   name: string;
@@ -22,10 +21,9 @@ interface Room {
   price: number;
   maxPeople: number;
   floor: number;
-  images: string[]; // Đồng bộ với timkiem.tsx và ttphong.tsx
+  images: string[];
 }
 
-// Định nghĩa interface cho kết quả thanh toán
 interface PaymentResult {
   success: boolean;
   transactionId: string | null;
@@ -35,7 +33,6 @@ export default function ConfirmBooking() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  // Lấy thông tin từ params (truyền từ ttphong.tsx)
   const rooms: Room[] = params.rooms ? JSON.parse(params.rooms as string) : [];
   const totalPrice = parseFloat(params.totalPrice as string) || 0;
   const totalServicePrice = parseFloat(params.totalServicePrice as string) || 0;
@@ -46,7 +43,6 @@ export default function ConfirmBooking() {
     ? JSON.parse(params.selectedServices as string)
     : {};
 
-  // State cho thông tin khách hàng, phương thức thanh toán, và chi tiết thanh toán
   const [customerName, setCustomerName] = useState<string>("");
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [email, setEmail] = useState<string>("");
@@ -57,26 +53,21 @@ export default function ConfirmBooking() {
   const [expiryDate, setExpiryDate] = useState<string>("");
   const [cvv, setCvv] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [timeLeft, setTimeLeft] = useState<number>(600);
+  const [isRoomReserved, setIsRoomReserved] = useState<boolean>(true);
 
-  // State cho đếm ngược thời gian giữ phòng (10 phút = 600 giây)
-  const [timeLeft, setTimeLeft] = useState<number>(600); // 600 giây = 10 phút
-  const [isRoomReserved, setIsRoomReserved] = useState<boolean>(true); // Giả lập trạng thái giữ phòng
-
-  // Danh sách phương thức thanh toán
   const paymentMethods = [
     { label: "Tiền mặt", value: "cash" },
     { label: "Thẻ tín dụng", value: "credit_card" },
     { label: "Ví điện tử", value: "digital_wallet" },
   ];
 
-  // Danh sách ví điện tử
   const digitalWallets = [
     { label: "MoMo", value: "momo" },
     { label: "ZaloPay", value: "zalopay" },
     { label: "VNPay", value: "vnpay" },
   ];
 
-  // Load phương thức thanh toán mặc định từ AsyncStorage
   useEffect(() => {
     const loadPaymentMethod = async () => {
       try {
@@ -88,25 +79,31 @@ export default function ConfirmBooking() {
         console.error("Error loading payment method:", err);
       }
     };
+
+    const checkAuth = async () => {
+      const token = await AsyncStorage.getItem("authToken");
+      console.log("Token khi vào màn hình:", token);
+      if (!token) {
+        Alert.alert("Lỗi", "Vui lòng đăng nhập để đặt phòng.", [
+          { text: "OK", onPress: () => router.replace("/") },
+        ]);
+      }
+    };
+
     loadPaymentMethod();
+    checkAuth();
   }, []);
 
-  // Đếm ngược thời gian giữ phòng
   useEffect(() => {
-    // Giả lập kiểm tra trạng thái giữ phòng (có thể thay bằng API)
     const checkRoomReservation = async () => {
-      // Giả lập: Nếu phòng đã được người khác đặt (trong thực tế, gọi API để kiểm tra)
-      const isRoomTaken = false; // Thay bằng logic gọi API
+      const isRoomTaken = false; // Thay bằng API kiểm tra phòng nếu cần
       if (isRoomTaken) {
         setIsRoomReserved(false);
         Alert.alert(
           "Phòng đã được đặt",
           "Rất tiếc, phòng đã được người khác đặt. Vui lòng chọn phòng khác.",
           [
-            {
-              text: "OK",
-              onPress: () => router.replace("/home/timkiem"),
-            },
+            { text: "OK", onPress: () => router.replace("/home/timkiem") },
           ]
         );
         return;
@@ -115,7 +112,6 @@ export default function ConfirmBooking() {
 
     checkRoomReservation();
 
-    // Đếm ngược thời gian
     const timer = setInterval(() => {
       setTimeLeft((prevTime) => {
         if (prevTime <= 0) {
@@ -126,10 +122,7 @@ export default function ConfirmBooking() {
               "Hết thời gian giữ phòng",
               "Thời gian giữ phòng đã hết. Vui lòng chọn lại phòng.",
               [
-                {
-                  text: "OK",
-                  onPress: () => router.replace("/home/trangchu"),
-                },
+                { text: "OK", onPress: () => router.replace("/home/trangchu") },
               ]
             );
           }
@@ -139,30 +132,25 @@ export default function ConfirmBooking() {
       });
     }, 1000);
 
-    // Dọn dẹp interval khi component unmount
     return () => clearInterval(timer);
   }, [isRoomReserved]);
 
-  // Chuyển đổi thời gian thành định dạng MM:SS
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
-  // Kiểm tra định dạng email
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
-  // Kiểm tra định dạng số điện thoại (ví dụ: 10 chữ số, bắt đầu bằng 0)
   const validatePhoneNumber = (phone: string) => {
     const phoneRegex = /^0\d{9}$/;
     return phoneRegex.test(phone);
   };
 
-  // Giả lập API thanh toán với kiểu trả về rõ ràng
   const processPayment = async (paymentData: any): Promise<PaymentResult> => {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -171,17 +159,13 @@ export default function ConfirmBooking() {
     });
   };
 
-  // Hàm xử lý đặt phòng
   const handleConfirmBooking = async () => {
     if (!isRoomReserved) {
       Alert.alert(
         "Phòng không còn được giữ",
         "Rất tiếc, phòng không còn được giữ. Vui lòng chọn phòng khác.",
         [
-          {
-            text: "OK",
-            onPress: () => router.replace("/home/trangchu"),
-          },
+          { text: "OK", onPress: () => router.replace("/home/trangchu") },
         ]
       );
       return;
@@ -242,43 +226,73 @@ export default function ConfirmBooking() {
         }
       }
 
-      const bookingData = {
-        MAKH: 11, // Cần lấy từ hệ thống (tạm để 11 như Postman)
-        NgayDat: new Date().toISOString().split("T")[0], // Ngày hiện tại
-        NgayNhan: checkInDate,
-        NgayTra: checkOutDate,
-        MaPhong: rooms[0].id, // Lấy mã phòng đầu tiên
-        GhiChu: notes,
+      const token = await AsyncStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Vui lòng đăng nhập để đặt phòng.");
+      }
+
+      const decodeJWT = (token: string): any => {
+        try {
+          const payload = token.split('.')[1];
+          return JSON.parse(atob(payload));
+        } catch (e) {
+          throw new Error("Token không hợp lệ.");
+        }
       };
 
-      console.log("Dữ liệu gửi lên server:", bookingData);
+      const decoded = decodeJWT(token);
+      console.log("Decoded token:", decoded);
+      const maKH = decoded.id; // Token chứa id thay vì MaKH
 
-      const res = await fetch("http://192.168.3.102:3001/api/bookings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(bookingData),
+      if (!maKH) {
+        throw new Error("Không tìm thấy ID người dùng trong token.");
+      }
+
+      // Gửi yêu cầu đặt phòng cho từng phòng
+      const bookingPromises = rooms.map(async (room) => {
+        const bookingData = {
+          MaKH: maKH,
+          NgayDat: new Date().toISOString().split("T")[0],
+          NgayNhan: checkInDate,
+          NgayTra: checkOutDate,
+          MaPhong: room.id,
+          GhiChu: notes,
+        };
+
+        console.log("Dữ liệu gửi lên server:", bookingData);
+
+        const res = await fetch("http://192.168.1.134:3001/api/bookings", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify(bookingData),
+        });
+
+        const result = await res.json();
+        console.log("Phản hồi từ server:", { status: res.status, body: result });
+
+        if (!res.ok) {
+          throw new Error(result?.message || `Đặt phòng ${room.name} thất bại.`);
+        }
+        return result;
       });
 
-      const result = await res.json();
-      console.log("Phản hồi từ server:", { status: res.status, body: result });
-
-      if (!res.ok) {
-        throw new Error(result?.message || "Đặt phòng thất bại. Vui lòng thử lại.");
-      }
+      const bookingResults = await Promise.all(bookingPromises);
 
       await AsyncStorage.setItem("defaultPaymentMethod", paymentMethod);
 
-      Alert.alert("Thành công", `Đặt phòng thành công! Mã đặt phòng: ${result.bookingID}`, [
-        {
-          text: "OK",
-          onPress: () => router.replace("/home/trangchu"),
-        },
-      ]);
+      Alert.alert(
+        "Thành công",
+        `Đặt phòng thành công! Mã đặt phòng: ${bookingResults.map((r) => r.bookingId).join(", ")}`,
+        [
+          { text: "OK", onPress: () => router.replace("/home/trangchu") },
+        ]
+      );
     } catch (err: any) {
       console.error("Booking error:", err);
-      Alert.alert("Lỗi", err.message || "Đã xảy ra lỗi. Vui lòng thử lại.");
+      Alert.alert("Lỗi", err.message || "Đã xảy ra lỗi khi đặt phòng. Vui lòng thử lại.");
     } finally {
       setIsLoading(false);
     }
@@ -286,7 +300,6 @@ export default function ConfirmBooking() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Icon name="arrow-back" size={24} color="#000" />
@@ -295,7 +308,6 @@ export default function ConfirmBooking() {
         <View style={{ width: 24 }} />
       </View>
 
-      {/* Thông báo giữ phòng với đồng hồ đếm ngược */}
       {isRoomReserved && (
         <View style={styles.reservationNotice}>
           <Icon name="time-outline" size={20} color="#FF4500" />
@@ -306,7 +318,6 @@ export default function ConfirmBooking() {
       )}
 
       <ScrollView style={styles.scrollContainer}>
-        {/* Khung: Thông tin đặt phòng */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Thông tin đặt phòng</Text>
           <View style={styles.infoRow}>
@@ -333,7 +344,6 @@ export default function ConfirmBooking() {
           </View>
         </View>
 
-        {/* Khung: Thông tin giá */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Thông tin giá</Text>
           <View style={styles.infoRow}>
@@ -364,7 +374,6 @@ export default function ConfirmBooking() {
           )}
         </View>
 
-        {/* Khung: Chọn phương thức thanh toán */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
           {paymentMethods.map((method, index) => (
@@ -388,7 +397,6 @@ export default function ConfirmBooking() {
             </TouchableOpacity>
           ))}
 
-          {/* Hiển thị chi tiết nếu chọn "Thẻ tín dụng" */}
           {paymentMethod === "credit_card" && (
             <View style={styles.paymentDetails}>
               <TextInput
@@ -420,7 +428,6 @@ export default function ConfirmBooking() {
             </View>
           )}
 
-          {/* Hiển thị danh sách ví nếu chọn "Ví điện tử" */}
           {paymentMethod === "digital_wallet" && (
             <View style={styles.paymentDetails}>
               {digitalWallets.map((wallet, index) => (
@@ -447,7 +454,6 @@ export default function ConfirmBooking() {
           )}
         </View>
 
-        {/* Khung: Thông tin khách hàng */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Thông tin khách hàng</Text>
           <TextInput
@@ -481,7 +487,6 @@ export default function ConfirmBooking() {
         </View>
       </ScrollView>
 
-      {/* Footer với nút "Xác nhận đặt phòng" */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.confirmButton, (isLoading || !isRoomReserved) && styles.disabledButton]}

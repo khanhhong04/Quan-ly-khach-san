@@ -26,24 +26,23 @@ const getAvailableRooms = async (req, res) => {
 
     // Truy vấn lấy danh sách phòng trống
     const query = `
-      SELECT MaPhong, SoPhong, Tang, TenLoaiPhong, SoNguoiToiDa, TrangThai, MoTa, GiaPhong
-      FROM phong
-      WHERE TrangThai = 'TRONG'
-      AND MaPhong NOT IN (
-        SELECT MaPhong
-        FROM datphong
+      SELECT p.MaPhong, p.SoPhong, p.Tang, p.TenLoaiPhong, p.SoNguoiToiDa, p.MoTa, p.GiaPhong
+      FROM phong p
+      WHERE p.MaPhong NOT IN (
+        SELECT dp.MaPhong
+        FROM datphong dp
         WHERE (
-          (NgayNhan <= ? AND NgayTra >= ?) -- Khoảng thời gian đặt phòng bao phủ checkIn
-          OR (NgayNhan <= ? AND NgayTra >= ?) -- Khoảng thời gian đặt phòng bao phủ checkOut
-          OR (NgayNhan >= ? AND NgayTra <= ?) -- Khoảng thời gian đặt phòng nằm trong checkIn-checkOut
+          (dp.NgayNhan <= ? AND dp.NgayTra >= ?)
+          OR (dp.NgayNhan <= ? AND dp.NgayTra >= ?)
+          OR (dp.NgayNhan >= ? AND dp.NgayTra <= ?)
         )
-        AND TrangThai = 'DA_THUE' 
+        AND dp.TrangThai IN ('DA_THUE', 'DANG_SU_DUNG')
       );
     `;
 
     // Thay thế các tham số trong truy vấn
     const [results] = await db.query(query, [checkOut, checkIn, checkOut, checkOut, checkIn, checkIn, checkOut]);
-      
+
     // Thêm danh sách ảnh cho từng phòng dựa trên tầng
     const imageDir = path.join(__dirname, '../public/images');
     const formattedResults = results.map(room => {
@@ -64,6 +63,7 @@ const getAvailableRooms = async (req, res) => {
     res.status(500).json({ message: 'Error fetching rooms', error: err.message });
   }
 };
+
 // Hàm lấy chi tiết phòng
 const getRoomById = async (req, res) => {
   const { id } = req.params;
@@ -71,7 +71,7 @@ const getRoomById = async (req, res) => {
   try {
     const db = await dbPromise;
     const query = `
-      SELECT MaPhong, SoPhong, Tang, TenLoaiPhong, SoNguoiToiDa, TrangThai, MoTa, GiaPhong
+      SELECT MaPhong, SoPhong, Tang, TenLoaiPhong, SoNguoiToiDa, MoTa, GiaPhong
       FROM phong
       WHERE MaPhong = ?
     `;
@@ -88,11 +88,11 @@ const getRoomById = async (req, res) => {
       .filter(file => file.startsWith(`tang${tang}_`) && /\.(jpg|jpeg|png)$/i.test(file))
       .map(file => `/images/${file}`);
 
-
     // Chuyển GiaPhong thành số
     const formattedResults = results.map(room => ({
       ...room,
-      GiaPhong: parseFloat(room.GiaPhong)
+      GiaPhong: parseFloat(room.GiaPhong),
+      images
     }));
 
     res.status(200).json(formattedResults);

@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const bookingController = require('../controllers/bookingController');
+const authMiddleware = require("../middleware/authMiddleware");
 
-// Định tuyến API
-router.post('/', bookingController.createBooking); // Tạo đặt phòng mới
-router.patch('/:id/cancel', bookingController.cancelBooking); // Hủy đặt phòng
+router.post('/', authMiddleware, bookingController.createBooking);
+router.patch('/:id/cancel', authMiddleware, bookingController.cancelBooking);
 
 module.exports = router;

@@ -31,7 +31,7 @@ export default function SearchResults() {
   const checkOut = params.checkOut as string;
   const floor = params.floor ? parseInt(params.floor as string) : null;
 
-  console.log("Tham số đầu vào:", { rooms, adults, floor });
+  console.log("Tham số đầu vào:", { rooms, adults, floor, checkIn, checkOut });
 
   const [checkInDate, setCheckInDate] = useState<string>(checkIn || "2025-04-10");
   const [checkOutDate, setCheckOutDate] = useState<string>(checkOut || "2025-04-12");
@@ -43,7 +43,7 @@ export default function SearchResults() {
     const fetchRooms = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch("http://192.168.3.102:3001/api/rooms", {
+        const response = await fetch("http://192.168.1.134:3001/api/rooms", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -52,7 +52,7 @@ export default function SearchResults() {
         });
 
         if (!response.ok) {
-          throw new Error("Failed to fetch rooms");
+          throw new Error(`Failed to fetch rooms: ${response.statusText}`);
         }
 
         const roomsData = await response.json();
@@ -67,11 +67,12 @@ export default function SearchResults() {
     };
 
     const findRoomCombinations = (roomsData: any[]) => {
-      let availableRooms = roomsData.filter((room: any) => room.TrangThai === "TRONG");
+      // Không lọc TrangThai, vì backend đã trả về các phòng trống
+      let availableRooms = roomsData;
       if (floor !== null) {
         availableRooms = availableRooms.filter((room: any) => room.Tang === floor);
       }
-      console.log("Phòng trống:", availableRooms);
+      console.log("Phòng trống sau khi lọc:", availableRooms);
 
       const newCombinations: Room[][] = [];
 
@@ -87,8 +88,10 @@ export default function SearchResults() {
         );
 
         if (currentCombo.length === maxRooms || totalPeople >= targetPeople) {
-          newCombinations.push([...currentCombo]);
-          console.log("Tổ hợp tìm thấy:", currentCombo);
+          if (currentCombo.length > 0) {
+            newCombinations.push([...currentCombo]);
+            console.log("Tổ hợp tìm thấy:", currentCombo);
+          }
           return;
         }
 
@@ -101,7 +104,7 @@ export default function SearchResults() {
             price: parseFloat(room.GiaPhong),
             maxPeople: room.SoNguoiToiDa,
             floor: room.Tang || 0,
-            images: room.images.map((img: string) => `http://192.168.3.102:3001${img}`),
+            images: room.images.map((img: string) => `http://192.168.1.134:3001${img}`),
           };
           currentCombo.push(formattedRoom);
           generateCombinations(currentCombo, i + 1, targetPeople, maxRooms);
@@ -121,7 +124,7 @@ export default function SearchResults() {
           price: parseFloat(defaultRoom.GiaPhong),
           maxPeople: defaultRoom.SoNguoiToiDa,
           floor: defaultRoom.Tang || 0,
-          images: defaultRoom.images.map((img: string) => `http://192.168.3.102:3001${img}`),
+          images: defaultRoom.images.map((img: string) => `http://192.168.1.134:3001${img}`),
         };
         newCombinations.push([formattedRoom]);
         console.log("Tổ hợp mặc định:", newCombinations);
@@ -178,7 +181,7 @@ export default function SearchResults() {
   };
 
   const RoomCard = ({ rooms, comboIndex }: { rooms: Room[]; comboIndex: number }) => {
-    const [currentImageIndex, setCurrentImageIndex] = useState(0); // Quản lý chỉ số ảnh trong RoomCard
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     const totalPrice = rooms.reduce((sum, room) => sum + (room.price || 0), 0);
     const totalPeople = rooms.reduce((sum, room) => sum + (room.maxPeople || 0), 0);
@@ -186,16 +189,13 @@ export default function SearchResults() {
     const floors = rooms.map((room) => room.floor).join(", ");
     const allImages = rooms.flatMap((room) => room.images);
 
-    // Tự động chạy slideshow
     useEffect(() => {
-      if (allImages.length > 1) { // Chỉ chạy nếu có hơn 1 ảnh
+      if (allImages.length > 1) {
         const interval = setInterval(() => {
           setCurrentImageIndex((prevIndex) =>
             prevIndex === allImages.length - 1 ? 0 : prevIndex + 1
           );
-        }, 3000); // Chuyển ảnh mỗi 3 giây
-
-        // Dọn dẹp interval khi component unmount
+        }, 3000);
         return () => clearInterval(interval);
       }
     }, [allImages.length]);
@@ -218,7 +218,6 @@ export default function SearchResults() {
                 style={styles.roomImage}
                 resizeMode="cover"
                 onError={(e) => console.log("Lỗi tải ảnh:", e.nativeEvent.error)}
-               
               />
             ) : (
               <Text style={styles.placeholderText}>Không có hình ảnh</Text>
@@ -237,7 +236,6 @@ export default function SearchResults() {
     );
   };
 
-  console.log("Combinations:", combinations);
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
@@ -439,4 +437,4 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 20,
   },
-});
+}); 
