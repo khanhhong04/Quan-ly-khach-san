@@ -1,8 +1,8 @@
 const db = require("../config/database");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
 require("dotenv").config();
+const { sendOTPEmail } = require("../utils/sendEmail");
 
 // Đăng nhập
 const loginUser = async (req, res) => {
@@ -59,7 +59,7 @@ const registerUser = async (req, res) => {
     }
 };
 
-// Quên mật khẩu - Gửi email đặt lại mật khẩu
+// Quên mật khẩu - Gửi mã OTP qua email
 const forgotPassword = async (req, res) => {
     try {
         const { Email } = req.body;
@@ -68,48 +68,70 @@ const forgotPassword = async (req, res) => {
         const [results] = await db.execute("SELECT * FROM User WHERE Email = ?", [Email]);
         if (results.length === 0) return res.status(404).json({ message: "Email không tồn tại!" });
 
-        const user = results[0];
-        const resetToken = jwt.sign({ id: user.ID }, process.env.JWT_SECRET, { expiresIn: "15m" });
-        const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
+        // Tạo mã OTP ngẫu nhiên 6 số
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // Hết hạn sau 10 phút
 
-        const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-        });
+        // Lưu OTP vào bảng otp_codes
+        await db.execute(
+            "INSERT INTO otp_codes (Email, OTP, ExpiresAt) VALUES (?, ?, ?)",
+            [Email, otp, expiresAt]
+        );
 
-        await transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: user.Email,
-            subject: "Đặt lại mật khẩu",
-            text: `Nhấn vào link sau để đặt lại mật khẩu: ${resetLink}`
-        });
+        // Gửi email chứa mã OTP
+        await sendOTPEmail(Email, otp);
 
-        res.json({ message: "Email đặt lại mật khẩu đã được gửi!" });
+        res.json({ message: "Mã OTP đã được gửi đến email của bạn!" });
     } catch (error) {
-        console.error("❌ Lỗi quên mật khẩu:", error);
-        res.status(500).json({ message: "Lỗi khi gửi email!", error: error.message });
+        console.error("❌ Lỗi gửi mã OTP:", error);
+        res.status(500).json({ message: "Lỗi khi gửi mã OTP!", error: error.message });
     }
-    
 };
 
-// Đặt lại mật khẩu
-const resetPassword = async (req, res) => {
+// Xác minh OTP và đặt lại mật khẩu
+const verifyOTPAndResetPassword = async (req, res) => {
     try {
-        const { token, newPassword } = req.body;
-        if (!token || !newPassword) return res.status(400).json({ message: "Thiếu dữ liệu!" });
+        const { Email, otp, newPassword } = req.body;
+        if (!Email || !otp || !newPassword) {
+            return res.status(400).json({ message: "Vui lòng nhập email, mã OTP và mật khẩu mới!" });
+        }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decoded.id;
+        // Kiểm tra mã OTP
+        const [results] = await db.execute(
+            "SELECT * FROM otp_codes WHERE Email = ? AND OTP = ?",
+            [Email, otp]
+        );
+        if (results.length === 0) {
+            return res.status(400).json({ message: "Mã OTP không hợp lệ!" });
+        }
 
+        const otpRecord = results[0];
+        const now = new Date();
+        if (now > new Date(otpRecord.ExpiresAt)) {
+            return res.status(400).json({ message: "Mã OTP đã hết hạn!" });
+        }
+
+        // Tìm người dùng
+        const [userResults] = await db.execute("SELECT * FROM User WHERE Email = ?", [Email]);
+        if (userResults.length === 0) {
+            return res.status(404).json({ message: "Email không tồn tại!" });
+        }
+
+        // Đặt lại mật khẩu
         const hashedPassword = await bcrypt.hash(newPassword, 10);
-        await db.execute("UPDATE User SET MatKhau = ? WHERE ID = ?", [hashedPassword, userId]);
+        await db.execute("UPDATE User SET MatKhau = ? WHERE Email = ?", [hashedPassword, Email]);
 
-        res.json({ message: "Mật khẩu đã được cập nhật!" });
+        // Xóa mã OTP sau khi sử dụng
+        await db.execute("DELETE FROM otp_codes WHERE Email = ? AND OTP = ?", [Email, otp]);
+
+        res.json({ message: "Mật khẩu đã được cập nhật thành công!" });
     } catch (error) {
-        res.status(400).json({ message: "Token không hợp lệ hoặc đã hết hạn!" });
+        console.error("❌ Lỗi xác minh OTP và đặt lại mật khẩu:", error);
+        res.status(500).json({ message: "Lỗi server!", error: error.message });
     }
-    
 };
+
+// Xác minh token
 const verifyToken = async (req, res) => {
     const token = req.header("Authorization");
     console.log("Verify-token - Token nhận được:", token);
@@ -129,8 +151,7 @@ const verifyToken = async (req, res) => {
       console.error("Verify-token - Lỗi:", err.message);
       res.status(401).json({ success: false, message: `Token không hợp lệ: ${err.message}` });
     }
-  };
-  
+};
 
 // Export các hàm
-module.exports = { loginUser, registerUser, forgotPassword, resetPassword,verifyToken, };
+module.exports = { loginUser, registerUser, forgotPassword, verifyOTPAndResetPassword, verifyToken };

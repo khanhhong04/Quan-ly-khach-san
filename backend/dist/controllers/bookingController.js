@@ -1,4 +1,5 @@
 const dbPromise = require('../config/database');
+const { sendBookingConfirmation, sendCancellationConfirmation } = require('../utils/sendEmail'); // Import hàm gửi email
 
 // Tạo đặt phòng mới
 const createBooking = async (req, res) => {
@@ -65,6 +66,20 @@ const createBooking = async (req, res) => {
       return res.status(400).json({ message: 'Room is not available' });
     }
 
+    // Truy vấn email khách hàng từ bảng khachhang
+    const getCustomerQuery = `
+      SELECT Email
+      FROM user
+      WHERE ID = ?;
+    `;
+    const [customer] = await db.query(getCustomerQuery, [MaKH]);
+
+    if (customer.length === 0 || !customer[0].Email) {
+      return res.status(404).json({ message: 'Customer email not found' });
+    }
+
+    const customerEmail = customer[0].Email;
+
     // Thêm bản ghi vào bảng datphong với trạng thái DA_THUE
     const insertBookingQuery = `
       INSERT INTO datphong (MaKH, NgayDat, NgayNhan, NgayTra, TrangThai, GhiChu, MaPhong)
@@ -87,10 +102,19 @@ const createBooking = async (req, res) => {
     `;
     await db.query(updateRoomQuery, [MaPhong]);
 
-    res.status(201).json({ message: 'Booking created successfully', bookingId: result.insertId });
+    // Gửi email xác nhận đặt phòng
+    const bookingDetails = {
+      bookingId: result.insertId,
+      checkInDate: NgayNhan,
+      checkOutDate: NgayTra,
+      roomId: MaPhong,
+    };
+    await sendBookingConfirmation(customerEmail, bookingDetails);
+
+    res.status(201).json({ message: 'Booking created successfully, confirmation email sent', bookingId: result.insertId });
   } catch (err) {
     console.error('Error creating booking:', err);
-    res.status(500).json({ message: 'Error creating booking', error: err.message });
+    res.status(500).json({ message: 'Error creating booking or sending email', error: err.message });
   }
 };
 
@@ -101,10 +125,12 @@ const cancelBooking = async (req, res) => {
 
   try {
     const db = await dbPromise;
+    // Lấy thông tin đặt phòng và email khách hàng
     const checkBookingQuery = `
-      SELECT MaPhong, TrangThai, MaKH
-      FROM datphong
-      WHERE MaDatPhong = ?;
+      SELECT dp.MaPhong, dp.TrangThai, dp.MaKH, dp.NgayNhan, dp.NgayTra, u.Email
+      FROM datphong dp
+      JOIN user u ON dp.MaKH = u.ID
+      WHERE dp.MaDatPhong = ?;
     `;
     const [booking] = await db.query(checkBookingQuery, [id]);
 
@@ -147,10 +173,19 @@ const cancelBooking = async (req, res) => {
       await db.query(updateRoomQuery, [booking[0].MaPhong]);
     }
 
-    res.status(200).json({ message: 'Booking canceled successfully' });
+    // Gửi email thông báo hủy phòng
+    const cancellationDetails = {
+      bookingId: id,
+      checkInDate: booking[0].NgayNhan,
+      checkOutDate: booking[0].NgayTra,
+      roomId: booking[0].MaPhong,
+    };
+    await sendCancellationConfirmation(booking[0].Email, cancellationDetails);
+
+    res.status(200).json({ message: 'Booking canceled successfully, cancellation email sent' });
   } catch (err) {
     console.error('Error canceling booking:', err);
-    res.status(500).json({ message: 'Error canceling booking', error: err.message });
+    res.status(500).json({ message: 'Error canceling booking or sending email', error: err.message });
   }
 };
 

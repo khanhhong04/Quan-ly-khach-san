@@ -1,5 +1,5 @@
 const express = require("express");
-const { loginUser, registerUser, forgotPassword, verifyToken } = require("../controllers/authController");
+const { loginUser, registerUser, forgotPassword, verifyOTPAndResetPassword, verifyToken } = require("../controllers/authController");
 
 const router = express.Router();
 
@@ -7,10 +7,13 @@ const router = express.Router();
 router.post("/login", loginUser);
 
 // Đăng ký
-router.post("/register",  registerUser);
+router.post("/register", registerUser);
 
-// Quên mật khẩu
+// Quên mật khẩu - Gửi mã OTP
 router.post("/forgot-password", forgotPassword);
+
+// Xác minh OTP và đặt lại mật khẩu
+router.post("/verify-otp", verifyOTPAndResetPassword);
 
 // Xác minh token
 router.get("/verify-token", verifyToken);
