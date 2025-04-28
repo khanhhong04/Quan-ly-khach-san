@@ -17,7 +17,7 @@ const ForgotPassword = () => {
     }
 
     try {
-      const response = await fetch('http://192.168.1.134:3001/api/auth/forgot-password', {
+      const response = await fetch('http://192.168.3.102:3001/api/auth/forgot-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -45,7 +45,7 @@ const ForgotPassword = () => {
     }
 
     try {
-      const response = await fetch('http://192.168.1.134:3001/api/auth/verify-otp', {
+      const response = await fetch('http://192.168.3.102:3001/api/auth/verify-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

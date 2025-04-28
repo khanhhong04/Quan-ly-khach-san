@@ -84,5 +84,30 @@ const sendOTPEmail = async (to, otp) => {
     throw error;
   }
 };
+// Hàm gửi email thông báo số tiền thừa
+const sendExcessAmountNotification = async (to, paymentDetails) => {
+  try {
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: to,
+      subject: 'Thông báo số tiền thừa thanh toán',
+      html: `
+        <h2>Thông báo số tiền thừa</h2>
+        <p>Chúng tôi ghi nhận bạn đã thanh toán thừa cho giao dịch đặt phòng.</p>
+        <p><strong>Mã hóa đơn:</strong> ${paymentDetails.paymentId}</p>
+        <p><strong>Mã đặt phòng:</strong> ${paymentDetails.bookingId}</p>
+        <p><strong>Số tiền thừa:</strong> ${paymentDetails.excessAmount.toLocaleString()} VNĐ</p>
+        <p><strong>Phương thức thanh toán:</strong> Ví điện tử</p>
+        <p>Vui lòng liên hệ với chúng tôi để được hỗ trợ hoàn tiền hoặc sử dụng số tiền thừa cho các giao dịch sau.</p>
+      `,
+    };
 
-module.exports = { sendBookingConfirmation, sendCancellationConfirmation, sendOTPEmail };
+    await transporter.sendMail(mailOptions);
+    console.log('Excess amount notification email sent successfully to', to);
+  } catch (error) {
+    console.error('Error sending excess amount notification email:', error);
+    throw error;
+  }
+};
+
+module.exports = { sendBookingConfirmation, sendCancellationConfirmation, sendOTPEmail, sendExcessAmountNotification };

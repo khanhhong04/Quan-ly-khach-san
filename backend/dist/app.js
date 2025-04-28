@@ -3,12 +3,16 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const path = require('path');
 const { setupCronJobs } = require('./cron'); // Import cron job setup
+const chatbotRoutes = require("./routes/chatbotRoutes");
+
+
 
 // Debug: Kiểm tra kiểu dữ liệu của routes
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const roomRoutes = require("./routes/roomRoutes");
+const paymentRoutes = require("./routes/paymentRoutes"); // Thêm route mới
 
 dotenv.config();
 
@@ -26,6 +30,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/rooms", roomRoutes);
+app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/payments", paymentRoutes); // Thêm route
 
 // Khởi động cron jobs
 setupCronJobs();

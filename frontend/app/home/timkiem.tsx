@@ -43,7 +43,7 @@ export default function SearchResults() {
     const fetchRooms = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch("http://192.168.1.134:3001/api/rooms", {
+        const response = await fetch("http://192.168.3.102:3001/api/rooms", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -104,7 +104,7 @@ export default function SearchResults() {
             price: parseFloat(room.GiaPhong),
             maxPeople: room.SoNguoiToiDa,
             floor: room.Tang || 0,
-            images: room.images.map((img: string) => `http://192.168.1.134:3001${img}`),
+            images: room.images.map((img: string) => `http://192.168.3.102:3001${img}`),
           };
           currentCombo.push(formattedRoom);
           generateCombinations(currentCombo, i + 1, targetPeople, maxRooms);
@@ -124,7 +124,7 @@ export default function SearchResults() {
           price: parseFloat(defaultRoom.GiaPhong),
           maxPeople: defaultRoom.SoNguoiToiDa,
           floor: defaultRoom.Tang || 0,
-          images: defaultRoom.images.map((img: string) => `http://192.168.1.134:3001${img}`),
+          images: defaultRoom.images.map((img: string) => `http://192.168.3.102:3001${img}`),
         };
         newCombinations.push([formattedRoom]);
         console.log("Tổ hợp mặc định:", newCombinations);
@@ -247,7 +247,7 @@ export default function SearchResults() {
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.filterButton} onPress={handleFilterPress}>
+        <TouchableOpacity style={styles.filterButton} onPress={() => router.push('/home/boloc')}>
           <Icon name="filter" size={20} color="#fff" />
           <Text style={styles.buttonText}>Bộ Lọc</Text>
         </TouchableOpacity>

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Modal,
   Animated,
+  ScrollView,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -14,20 +15,18 @@ import { useRouter } from "expo-router";
 
 export default function HoSo() {
   const router = useRouter();
-  const [isTermsModalVisible, setIsTermsModalVisible] = useState(false);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [isTermsModalVisible, setIsTermsModalVisible] = useState(false);
+  const [isHelpModalVisible, setIsHelpModalVisible] = useState(false);
 
-  // Khai báo userInfo ngay trong HoSo
   const [userInfo, setUserInfo] = useState({
     name: "",
     email: "",
     phone: "",
   });
 
-  // Animated value for the waving effect
   const waveAnimation = new Animated.Value(0);
 
-  // Animation for the waving effect
   useEffect(() => {
     const wave = () => {
       Animated.loop(
@@ -48,7 +47,6 @@ export default function HoSo() {
     wave();
   }, [waveAnimation]);
 
-  // Interpolate the rotation value for the waving effect
   const waveRotate = waveAnimation.interpolate({
     inputRange: [0, 1],
     outputRange: ["15deg", "45deg"],
@@ -83,70 +81,112 @@ export default function HoSo() {
     router.push("/");
   };
 
+  // Hàm điều hướng đến các trang khác với expo-router
+  const navigateTo = (path) => {
+    try {
+      // Đảm bảo path không rỗng và là chuỗi hợp lệ
+      if (!path || typeof path !== "string") {
+        console.error("Đường dẫn không hợp lệ:", path);
+        return;
+      }
+
+      // Điều hướng với expo-router
+      router.push(path);
+    } catch (error) {
+      console.error("Lỗi khi điều hướng:", error);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Icon name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Chào Mừng Bạn</Text>
-          <Animated.View
-            style={[styles.wavingIcon, { transform: [{ rotate: waveRotate }] }]}
+      <ScrollView contentContainerStyle={styles.scrollViewContent}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Icon name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>Chào Mừng Bạn</Text>
+            <Animated.View
+              style={[styles.wavingIcon, { transform: [{ rotate: waveRotate }] }]}
+            >
+              <Icon name="hand-right-outline" size={24} color="#fff" />
+            </Animated.View>
+          </View>
+          <View style={styles.emptySpace} />
+        </View>
+
+        <View style={styles.infoContainer}>
+          <Text style={styles.sectionTitle}>THÔNG TIN TÀI KHOẢN</Text>
+          <View style={styles.infoRow}>
+            <Icon name="person-outline" size={20} color="#666" />
+            <Text style={styles.infoLabel}>Tên đầy đủ:</Text>
+            <Text style={styles.infoValue}>{userInfo.name}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Icon name="mail-outline" size={20} color="#666" />
+            <Text style={styles.infoLabel}>Email:</Text>
+            <Text style={styles.infoValue}>{userInfo.email}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Icon name="call-outline" size={20} color="#666" />
+            <Text style={styles.infoLabel}>Số điện thoại:</Text>
+            <Text style={styles.infoValue}>{userInfo.phone}</Text>
+          </View>
+        </View>
+
+        <View style={styles.actionsContainer}>
+          <Text style={styles.sectionTitle}>CHUYẾN ĐI</Text>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => navigateTo("/(tabs)/favorites")}
           >
-            <Icon name="hand-right-outline" size={24} color="#fff" />
-          </Animated.View>
+            <Icon name="heart-outline" size={20} color="#666" />
+            <Text style={styles.actionText}>Căn hộ yêu thích</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => navigateTo("/(tabs)/index")}
+          >
+            <Icon name="list-outline" size={20} color="#666" />
+            <Text style={styles.actionText}>Danh sách chuyến đi</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.emptySpace} />
-      </View>
 
-      {/* Thông tin tài khoản */}
-      <View style={styles.infoContainer}>
-        <Text style={styles.sectionTitle}>THÔNG TIN TÀI KHOẢN</Text>
-        <View style={styles.infoRow}>
-          <Icon name="person-outline" size={20} color="#666" />
-          <Text style={styles.infoLabel}>Tên đầy đủ:</Text>
-          <Text style={styles.infoValue}>{userInfo.name}</Text>
+        <View style={styles.actionsContainer}>
+          <Text style={styles.sectionTitle}>HỖ TRỢ</Text>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => setIsHelpModalVisible(true)}
+          >
+            <Icon name="help-circle-outline" size={20} color="#666" />
+            <Text style={styles.actionText}>Trung tâm trợ giúp</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => setIsTermsModalVisible(true)}
+          >
+            <Icon name="document-text-outline" size={20} color="#666" />
+            <Text style={styles.actionText}>Điều khoản sử dụng</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+            <Icon name="notifications-outline" size={20} color="#666" />
+            <Text style={styles.actionText}>Thông báo</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.infoRow}>
-          <Icon name="mail-outline" size={20} color="#666" />
-          <Text style={styles.infoLabel}>Email:</Text>
-          <Text style={styles.infoValue}>{userInfo.email}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Icon name="call-outline" size={20} color="#666" />
-          <Text style={styles.infoLabel}>Số điện thoại:</Text>
-          <Text style={styles.infoValue}>{userInfo.phone}</Text>
-        </View>
-      </View>
 
-      {/* Điều khoản sử dụng */}
-      <View style={styles.actionsContainer}>
         <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => setIsTermsModalVisible(true)}
+          style={styles.deleteButton}
+          onPress={() => setIsDeleteModalVisible(true)}
         >
-          <Icon name="document-text-outline" size={20} color="#666" />
-          <Text style={styles.actionText}>Điều khoản sử dụng</Text>
+          <Icon name="person-outline" size={20} color="#000" />
+          <Text style={styles.deleteButtonText}>Xóa tài khoản của tôi</Text>
         </TouchableOpacity>
-      </View>
 
-      {/* Nút Xóa tài khoản */}
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => setIsDeleteModalVisible(true)}
-      >
-        <Icon name="person-outline" size={20} color="#000" />
-        <Text style={styles.deleteButtonText}>Xóa tài khoản của tôi</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutButtonText}>Đăng xuất</Text>
+        </TouchableOpacity>
+      </ScrollView>
 
-      {/* Nút Đăng xuất */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutButtonText}>Đăng xuất</Text>
-      </TouchableOpacity>
-
-      {/* Modal Điều khoản sử dụng */}
       <Modal
         visible={isTermsModalVisible}
         transparent={true}
@@ -192,7 +232,33 @@ export default function HoSo() {
         </View>
       </Modal>
 
-      {/* Modal Xác nhận Xóa tài khoản */}
+      <Modal
+        visible={isHelpModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsHelpModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Trung tâm trợ giúp</Text>
+            </View>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalText}>Liên hệ tới Sdt: 098 xxx xxx</Text>
+              <Text style={[styles.modalText, styles.modalTextTight]}>
+                Email: email@gmail.com
+              </Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setIsHelpModalVisible(false)}
+              >
+                <Text style={styles.closeButtonText}>Đóng</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Modal
         visible={isDeleteModalVisible}
         transparent={true}
@@ -229,6 +295,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#f4f4f4",
+  },
+  scrollViewContent: {
+    paddingBottom: 20,
   },
   header: {
     flexDirection: "row",
@@ -370,6 +439,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#333",
     marginBottom: 10,
+    textAlign: "left",
+  },
+  modalTextCentered: {
+    textAlign: "center",
+  },
+  modalTextTight: {
+    marginBottom: 5,
   },
   closeButton: {
     marginTop: 20,
