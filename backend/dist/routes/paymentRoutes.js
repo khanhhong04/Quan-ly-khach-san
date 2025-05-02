@@ -1,8 +1,9 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const paymentController = require("../controllers/paymentController");
-const authMiddleware = require("../middleware/authMiddleware");
+const { createMoMoPaymentUrl, handleMoMoReturn, handleMoMoIPN } = require('../controllers/paymentController');
 
-router.post("/", authMiddleware, paymentController.createPayment);
+router.post('/create_momo_payment_url', createMoMoPaymentUrl);
+router.get('/momo_return', handleMoMoReturn);
+router.post('/momo_ipn', handleMoMoIPN);
 
 module.exports = router;

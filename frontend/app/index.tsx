@@ -4,7 +4,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'reac
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = "http://192.168.3.102:3001/api/auth";
+const API_URL = "http://192.168.1.197:3001/api/auth";
 
 const LoginScreen: React.FC = () => {
   const [taiKhoan, setTaiKhoan] = useState<string>('');
@@ -59,8 +59,12 @@ const LoginScreen: React.FC = () => {
           setAccountList(accounts);
         }
 
-      
-        router.push('/home/trangchu'); 
+        // Kiểm tra RoleID để điều hướng
+        if (user.RoleID === 3) {
+          router.push('/admin/trangadmin'); // Chuyển hướng đến trangadmin nếu là admin
+        } else {
+          router.push('/home/trangchu'); // Chuyển hướng đến trangchu nếu không phải admin
+        }
       } else {
         Alert.alert('Lỗi', response.data.message || 'Sai thông tin đăng nhập');
       }
@@ -216,7 +220,7 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     fontSize: 20,
-    color: '#808080', // Đổi từ '#ff4444' (đỏ) sang '#808080' (xám)
+    color: '#808080',
     fontWeight: 'bold',
   },
   forgotPassword: {

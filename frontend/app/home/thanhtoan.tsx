@@ -9,11 +9,11 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  Linking,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createHmacSignature } from "../../utils/hmac";
 
 interface Room {
   id: string;
@@ -44,8 +44,7 @@ interface PaymentData {
   status: string;
   timestamp: string;
   transactionId?: string;
-  signature: string;
-  customerEmail?: string; // Thêm email khách hàng
+  customerEmail?: string;
 }
 
 export default function PaymentScreen() {
@@ -62,14 +61,12 @@ export default function PaymentScreen() {
   const rooms: Room[] = params.rooms ? JSON.parse(params.rooms as string) : [];
 
   const TOTAL_TIME = 600; // 10 phút
-  const SECRET_KEY = "06072004"; // Phải khớp với server
 
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [digitalWallet, setDigitalWallet] = useState<string>("");
   const [cardNumber, setCardNumber] = useState<string>("");
   const [expiryDate, setExpiryDate] = useState<string>("");
   const [cvv, setCvv] = useState<string>("");
-  const [paymentAmount, setPaymentAmount] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(TOTAL_TIME);
   const [isRoomReserved, setIsRoomReserved] = useState<boolean>(true);
@@ -169,60 +166,90 @@ export default function PaymentScreen() {
     }
   }, [isTimeExpired, router]);
 
+  // Xử lý deep link khi quay lại từ MoMo
+  useEffect(() => {
+    const handleDeepLink = async (event: { url: string }) => {
+      const { url } = event;
+      if (url.startsWith("myapp://payment-result")) {
+        // Lấy bookingId từ query string
+        const urlParams = new URLSearchParams(url.split("?")[1]);
+        const bookingId = urlParams.get("bookingId");
+
+        // Lấy bookingId từ AsyncStorage nếu không có trong URL
+        const storedBookingId = await AsyncStorage.getItem("lastBookingId");
+
+        const finalBookingId = bookingId || storedBookingId || "N/A";
+
+        // Hiển thị thông báo
+        Alert.alert(
+          "Thành công",
+          `Thanh toán thành công! Mã đặt phòng: ${finalBookingId}.`,
+          [
+            {
+              text: "OK",
+              onPress: async () => {
+                // Xóa dữ liệu tạm
+                await AsyncStorage.removeItem("reservationStartTime");
+                await AsyncStorage.removeItem("lastBookingId");
+                // Chuyển về trang chủ
+                router.replace("/home/trangchu");
+              },
+            },
+          ]
+        );
+      }
+    };
+
+    // Lắng nghe deep link và lưu subscription
+    const subscription = Linking.addEventListener("url", handleDeepLink);
+
+    // Xử lý deep link khi ứng dụng khởi động từ trạng thái đóng
+    const handleInitialUrl = async () => {
+      const initialUrl = await Linking.getInitialURL();
+      if (initialUrl) {
+        handleDeepLink({ url: initialUrl });
+      }
+    };
+    handleInitialUrl();
+
+    // Dọn dẹp subscription
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
+
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
-  const processPayment = async (paymentData: PaymentData): Promise<PaymentResult> => {
+  const createMoMoPayment = async (bookingId: string): Promise<string | null> => {
     try {
       const token = await AsyncStorage.getItem("authToken");
       if (!token) {
         throw new Error("Vui lòng đăng nhập để thanh toán.");
       }
 
-      const res = await fetch("http://192.168.3.102:3001/api/payments", {
+      const res = await fetch("http://192.168.1.197:3001/api/payments/create_momo_payment_url", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
-          "X-Payment-Signature": paymentData.signature,
         },
-        body: JSON.stringify(paymentData),
+        body: JSON.stringify({ bookingId }),
       });
 
       const result = await res.json();
       if (!res.ok) {
-        throw new Error(result.message || "Thanh toán thất bại.");
+        throw new Error(result.message || "Không thể tạo URL thanh toán MoMo.");
       }
 
-      return { success: true, transactionId: result.paymentId, message: result.message };
+      return result.paymentUrl;
     } catch (error: any) {
-      return { success: false, transactionId: null, message: error.message };
+      setErrorMessage(error.message || "Lỗi khi tạo URL thanh toán MoMo.");
+      return null;
     }
-  };
-
-  const isFormValid = () => {
-    if (!paymentMethod) return false;
-
-    if (paymentMethod === "credit_card") {
-      return (
-        cardNumber.length === 16 &&
-        cvv.length === 3 &&
-        /^\d{2}\/\d{2}$/.test(expiryDate)
-      );
-    }
-
-    if (paymentMethod === "digital_wallet") {
-      return !!digitalWallet && parseFloat(paymentAmount || "0") >= finalPrice;
-    }
-
-    if (paymentMethod === "cash") {
-      return parseFloat(paymentAmount || "0") >= finalPrice;
-    }
-
-    return true;
   };
 
   const handleConfirmPayment = async () => {
@@ -239,25 +266,13 @@ export default function PaymentScreen() {
       return;
     }
 
-    if (paymentMethod === "credit_card") {
-      if (!cardNumber || !expiryDate || !cvv) {
-        setErrorMessage("Vui lòng nhập đầy đủ thông tin thẻ tín dụng.");
-        return;
-      }
-      if (cardNumber.length !== 16 || cvv.length !== 3 || !/^\d{2}\/\d{2}$/.test(expiryDate)) {
-        setErrorMessage("Thông tin thẻ tín dụng không hợp lệ.");
-        return;
-      }
-    }
-
     if (paymentMethod === "digital_wallet" && !digitalWallet) {
       setErrorMessage("Vui lòng chọn ví điện tử.");
       return;
     }
 
-    const paymentAmountNum = parseFloat(paymentAmount || "0");
-    if ((paymentMethod === "cash" || paymentMethod === "digital_wallet") && paymentAmountNum < finalPrice) {
-      setErrorMessage(`Số tiền thanh toán (${paymentAmountNum.toLocaleString()} VNĐ) không đủ. Vui lòng nhập ít nhất ${finalPrice.toLocaleString()} VNĐ.`);
+    if (paymentMethod === "digital_wallet" && digitalWallet !== "momo") {
+      setErrorMessage("Hiện tại chỉ hỗ trợ thanh toán qua MoMo.");
       return;
     }
 
@@ -296,7 +311,7 @@ export default function PaymentScreen() {
           GhiChu: notes,
         };
 
-        const res = await fetch("http://192.168.3.102:3001/api/bookings", {
+        const res = await fetch("http://192.168.1.197:3001/api/bookings", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -314,64 +329,28 @@ export default function PaymentScreen() {
 
       const bookingResults = await Promise.all(bookingPromises);
 
-      // Kiểm tra bookingResults
       if (!bookingResults || bookingResults.length === 0 || !bookingResults[0].bookingId) {
         throw new Error("Không thể lấy mã đặt phòng. Vui lòng thử lại.");
       }
 
-      // Tạo dữ liệu thanh toán
-      const paymentAmountNum = paymentMethod === "credit_card" ? finalPrice : parseFloat(paymentAmount || "0");
-      const change = paymentAmountNum - finalPrice;
-      const timestamp = Math.floor(Date.now() / 1000).toString();
-      const transactionId = "TX" + Math.random().toString(36).substr(2, 9);
+      const bookingId = bookingResults[0].bookingId;
 
-      const paymentData: PaymentData = {
-        bookingId: bookingResults[0].bookingId,
-        amount: finalPrice,
-        paymentAmount: paymentAmountNum,
-        change: change > 0 ? change : 0,
-        paymentMethod: paymentMethod,
-        cardNumber: paymentMethod === "credit_card" ? cardNumber : undefined,
-        expiryDate: paymentMethod === "credit_card" ? expiryDate : undefined,
-        cvv: paymentMethod === "credit_card" ? cvv : undefined,
-        digitalWallet: paymentMethod === "digital_wallet" ? digitalWallet : undefined,
-        status: "completed",
-        timestamp,
-        transactionId,
-        customerEmail: email, // Thêm email khách hàng
-        signature: "",
-      };
+      // Lưu bookingId vào AsyncStorage trước khi mở URL thanh toán
+      await AsyncStorage.setItem("lastBookingId", bookingId.toString());
 
-      // Chỉ lấy các trường cần thiết để tạo chữ ký, đảm bảo ép kiểu thành string
-      const dataToSign = {
-        bookingId: String(paymentData.bookingId),
-        amount: String(paymentData.amount),
-        paymentAmount: String(paymentData.paymentAmount),
-        change: String(paymentData.change),
-        paymentMethod: String(paymentData.paymentMethod),
-        status: String(paymentData.status),
-        timestamp: String(paymentData.timestamp),
-        transactionId: String(paymentData.transactionId),
-      };
-
-      paymentData.signature = createHmacSignature(dataToSign, SECRET_KEY);
-
-      const paymentResult = await processPayment(paymentData);
-      if (!paymentResult.success) {
-        throw new Error(paymentResult.message || "Thanh toán thất bại.");
+      if (paymentMethod === "digital_wallet" && digitalWallet === "momo") {
+        const paymentUrl = await createMoMoPayment(bookingId);
+        if (paymentUrl) {
+          // Mở URL thanh toán trong trình duyệt
+          await Linking.openURL(paymentUrl);
+        } else {
+          throw new Error("Không thể tạo URL thanh toán MoMo.");
+        }
+      } else {
+        setErrorMessage("Hiện tại chỉ hỗ trợ thanh toán qua MoMo.");
       }
 
       await AsyncStorage.setItem("defaultPaymentMethod", paymentMethod);
-      await AsyncStorage.removeItem("reservationStartTime");
-
-      const successMessage =
-        change > 0
-          ? `Đặt phòng thành công! Mã đặt phòng: ${bookingResults.map((r) => r.bookingId).join(", ")}. Số tiền thừa: ${change.toLocaleString()} VNĐ sẽ được hoàn lại qua ${paymentMethod === "cash" ? "tiền mặt" : "chuyển khoản"}.`
-          : `Đặt phòng thành công! Mã đặt phòng: ${bookingResults.map((r) => r.bookingId).join(", ")}.`;
-
-      Alert.alert("Thành công", successMessage, [
-        { text: "OK", onPress: () => router.replace("/home/trangchu") },
-      ]);
     } catch (err: any) {
       console.error("Payment/Booking error:", err);
       setErrorMessage(err.message || "Đã xảy ra lỗi khi thanh toán hoặc đặt phòng. Vui lòng thử lại.");
@@ -426,21 +405,6 @@ export default function PaymentScreen() {
               />
             </TouchableOpacity>
           ))}
-
-          {(paymentMethod === "cash" || paymentMethod === "digital_wallet") && (
-            <View style={styles.paymentDetails}>
-              <TextInput
-                style={styles.input}
-                placeholder={`Số tiền thanh toán (tối thiểu ${finalPrice.toLocaleString()} VNĐ) *`}
-                value={paymentAmount}
-                onChangeText={(text) => {
-                  setPaymentAmount(text);
-                  setErrorMessage("");
-                }}
-                keyboardType="numeric"
-              />
-            </View>
-          )}
 
           {paymentMethod === "credit_card" && (
             <View style={styles.paymentDetails}>
@@ -509,9 +473,9 @@ export default function PaymentScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.confirmButton, (!isFormValid() || isLoading) && styles.disabledButton]}
+          style={[styles.confirmButton, (!paymentMethod || isLoading) && styles.disabledButton]}
           onPress={handleConfirmPayment}
-          disabled={!isFormValid() || isLoading}
+          disabled={!paymentMethod || isLoading}
         >
           {isLoading ? (
             <ActivityIndicator size="small" color="#fff" />

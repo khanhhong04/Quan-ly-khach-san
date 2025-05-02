@@ -29,22 +29,4 @@ const authMiddleware = (req, res, next) => {
         res.status(401).json({ success: false, message: "Token không hợp lệ!" });
     }
 };
-
-// Route xác minh token
-app.post('/api/auth/verify-token', (req, res) => {
-    const { token } = req.body;
-
-    if (!token) {
-        return res.status(400).json({ success: false, message: 'Token không được cung cấp.' });
-    }
-
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-        if (err) {
-            return res.status(401).json({ success: false, message: 'Token không hợp lệ.' });
-        }
-
-        res.json({ success: true, message: 'Token hợp lệ', decoded });
-    });
-});
-
 module.exports = authMiddleware;

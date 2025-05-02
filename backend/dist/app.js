@@ -13,6 +13,7 @@ const userRoutes = require("./routes/userRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const roomRoutes = require("./routes/roomRoutes");
 const paymentRoutes = require("./routes/paymentRoutes"); // Thêm route mới
+const adminRoutes = require("./routes/adminRoutes");
 
 dotenv.config();
 
@@ -32,6 +33,8 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/payments", paymentRoutes); // Thêm route
+app.use("/api/admin", adminRoutes);
+
 
 // Khởi động cron jobs
 setupCronJobs();

@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-const API_URL = 'http://192.168.3.102:3001/api';
+const API_URL = 'http://192.168.1.197:3001/api';
 
 interface Booking {
   MaDatPhong: number;

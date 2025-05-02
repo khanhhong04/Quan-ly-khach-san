@@ -153,5 +153,40 @@ const verifyToken = async (req, res) => {
     }
 };
 
+// Đăng nhập admin
+const adminLogin = async (req, res) => {
+    try {
+        const { TaiKhoan, MatKhau } = req.body;
+        if (!TaiKhoan || !MatKhau) {
+            return res.status(400).json({ success: false, message: "Vui lòng nhập đầy đủ thông tin!" });
+        }
+
+        const [results] = await db.execute("SELECT * FROM User WHERE TaiKhoan = ?", [TaiKhoan]);
+        if (results.length === 0) {
+            return res.status(401).json({ success: false, message: "Sai tài khoản hoặc mật khẩu!" });
+        }
+
+        const user = results[0];
+        if (user.RoleID !== 3) {
+            return res.status(403).json({ success: false, message: "Truy cập bị từ chối! Tài khoản này không phải admin." });
+        }
+
+        const isMatch = await bcrypt.compare(MatKhau, user.MatKhau);
+        if (!isMatch) {
+            return res.status(401).json({ success: false, message: "Sai tài khoản hoặc mật khẩu!" });
+        }
+
+        const token = jwt.sign({ id: user.ID, role: user.RoleID }, process.env.JWT_SECRET, { expiresIn: "1d" });
+        res.json({
+            success: true,
+            message: "Đăng nhập admin thành công!",
+            token,
+            user: { ID: user.ID, HoTen: user.HoTen, Email: user.Email, SoDienThoai: user.SoDienThoai, TaiKhoan: user.TaiKhoan, RoleID: user.RoleID },
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Lỗi server!", error: error.message });
+    }
+};
+
 // Export các hàm
-module.exports = { loginUser, registerUser, forgotPassword, verifyOTPAndResetPassword, verifyToken };
+module.exports = { loginUser, registerUser, forgotPassword, verifyOTPAndResetPassword, verifyToken, adminLogin };
