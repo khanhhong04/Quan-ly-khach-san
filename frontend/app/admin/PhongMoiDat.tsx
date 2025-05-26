@@ -1,40 +1,59 @@
-// components/admin/PhongMoiDat.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 
-const sampleData = [
-  {
-    id: '1',
-    datPhongId: '956678926',
-    ten: 'Quang Huy',
-    sdt: '0888131067',
-    phong: 'Phòng Vip 3',
-    gia: 1500000,
-    ngayVao: '10-05-2023',
-    ngayTra: '14-05-2023',
-    thoiGianConLai: '6 ngày',
-  },
-  {
-    id: '2',
-    datPhongId: '956678927',
-    ten: 'Quang Huy',
-    sdt: '0888131067',
-    phong: 'Phòng Bình Dân',
-    gia: 4800000,
-    ngayVao: '19-05-2023',
-    ngayTra: '25-05-2023',
-    thoiGianConLai: '6 ngày',
-  },
-];
+interface Booking {
+  MaDatPhong: number;
+  ten: string;
+  sdt: string;
+  phong: string;
+  gia: string;
+  ngayVao: string;
+  ngayTra: string;
+  ngayDat: string;
+  thoiGianConLai: string;
+  datPhongId: number;
+}
 
 const PhongMoiDat: React.FC = () => {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const fetchBookedRooms = async () => {
+      try {
+        const response = await fetch('http://192.168.3.102:3001/api/bookings/booked-rooms');
+        if (!response.ok) {
+          throw new Error('Phản hồi API không thành công');
+        }
+        const data = await response.json();
+        console.log('Booked rooms API response:', data);
+        setBookings(data.bookings || []);
+      } catch (error) {
+        console.error('Lỗi khi lấy danh sách phòng đã đặt:', error);
+      }
+    };
+
+    fetchBookedRooms();
+  }, []);
+
+  const filteredBookings = bookings.filter(booking =>
+    booking.datPhongId.toString().includes(searchQuery) ||
+    booking.ten.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    booking.sdt.includes(searchQuery)
+  );
+
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>THANH TOÁN TRẢ PHÒNG</Text>
-      <TextInput style={styles.searchInput} placeholder="Nhập để tìm kiếm..." />
+      <Text style={styles.header}>PHÒNG MỚI ĐẶT</Text>
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Nhập để tìm kiếm..."
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+      />
       <ScrollView style={styles.table}>
-        {sampleData.map((item, index) => (
-          <View key={item.id} style={styles.row}>
+        {filteredBookings.map((item, index) => (
+          <View key={item.MaDatPhong.toString()} style={styles.row}>
             <Text style={styles.cell}>{index + 1}</Text>
             <View style={styles.cellInfo}>
               <Text>ID Đặt Phòng: {item.datPhongId}</Text>
@@ -43,16 +62,17 @@ const PhongMoiDat: React.FC = () => {
             </View>
             <View style={styles.cellInfo}>
               <Text>Phòng: {item.phong}</Text>
-              <Text>Giá: {item.gia.toLocaleString()} vnd</Text>
+              <Text>Giá: {parseFloat(item.gia).toLocaleString()} vnd</Text>
             </View>
             <View style={styles.cellInfo}>
               <Text>Ngày Vào: {item.ngayVao}</Text>
               <Text>Ngày Trả: {item.ngayTra}</Text>
               <Text>Thời Gian Còn Lại: {item.thoiGianConLai}</Text>
+              <Text>Ngày Đặt: {item.ngayDat}</Text>
             </View>
             <View style={styles.actionButtons}>
               <TouchableOpacity style={[styles.button, { backgroundColor: '#27ae60' }]}>
-                <Text style={styles.buttonText}>Xác Nhận Thanh Toán</Text>
+                <Text style={styles.buttonText}>Xác Nhận Đặt phòng</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.button, { backgroundColor: '#e74c3c' }]}>
                 <Text style={styles.buttonText}>Hủy Bỏ Phòng</Text>

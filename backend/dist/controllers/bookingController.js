@@ -1,5 +1,15 @@
 const dbPromise = require('../config/database');
-const { sendBookingConfirmation, sendCancellationConfirmation } = require('../utils/sendEmail'); // Import hàm gửi email
+const { sendBookingConfirmation, sendCancellationConfirmation } = require('../utils/sendEmail');
+
+// Hàm định dạng ngày tháng theo múi giờ địa phương (GMT+7)
+const formatDateLocal = (date) => {
+  const offset = 7 * 60; // GMT+7 (7 giờ = 420 phút)
+  const localDate = new Date(date.getTime() + (offset * 60 * 1000));
+  const day = String(localDate.getUTCDate()).padStart(2, '0');
+  const month = String(localDate.getUTCMonth() + 1).padStart(2, '0');
+  const year = localDate.getUTCFullYear();
+  return `${day}-${month}-${year}`;
+};
 
 // Tạo đặt phòng mới
 const createBooking = async (req, res) => {
@@ -146,6 +156,11 @@ const cancelBooking = async (req, res) => {
       return res.status(400).json({ message: 'Booking is already canceled' });
     }
 
+    // Kiểm tra nếu đã thanh toán (DA_THANH_TOAN), không cho hủy
+    if (booking[0].TrangThai === 'DA_THANH_TOAN') {
+      return res.status(400).json({ message: 'Không thể hủy đặt phòng đã thanh toán' });
+    }
+
     // Cập nhật trạng thái đặt phòng thành DA_HUY
     const updateBookingQuery = `
       UPDATE datphong
@@ -273,9 +288,184 @@ const updateBookingStatus = async () => {
   }
 };
 
+// Lấy số lượng phòng đã đặt (DA_THUE, DANG_SU_DUNG, DA_THANH_TOAN)
+const getBookedRoomsCount = async (req, res) => {
+  try {
+    const db = await dbPromise;
+
+    const query = `
+      SELECT COUNT(DISTINCT MaPhong) as phongDaDat
+      FROM datphong
+      WHERE TrangThai IN ('DA_THUE', 'DANG_SU_DUNG', 'DA_THANH_TOAN');
+    `;
+    const [result] = await db.query(query);
+
+    res.status(200).json({
+      phongDaDat: result[0].phongDaDat || 0,
+    });
+  } catch (err) {
+    console.error('Error fetching booked rooms count:', err);
+    res.status(500).json({ message: 'Error fetching booked rooms count', error: err.message });
+  }
+};
+
+// Lấy tổng số bản ghi có trạng thái DA_HUY (tổng số lượt đặt phòng bị hủy)
+const getCancelledRoomsCount = async (req, res) => {
+  try {
+    const db = await dbPromise;
+
+    const query = `
+      SELECT COUNT(*) as phongDaHuy
+      FROM datphong
+      WHERE TrangThai = 'DA_HUY';
+    `;
+    const [result] = await db.query(query);
+
+    res.status(200).json({
+      phongDaHuy: result[0].phongDaHuy || 0,
+    });
+  } catch (err) {
+    console.error('Error fetching cancelled rooms count:', err);
+    res.status(500).json({ message: 'Error fetching cancelled rooms count', error: err.message });
+  }
+};
+
+// Lấy danh sách phòng đã đặt (trạng thái DA_THUE)
+const getBookedRooms = async (req, res) => {
+  try {
+    const db = await dbPromise;
+
+    const query = `
+      SELECT 
+        dp.MaDatPhong,
+        u.HoTen AS ten,
+        u.SoDienThoai AS sdt,
+        p.TenLoaiPhong AS phong,
+        p.GiaPhong AS gia,
+        dp.NgayNhan AS ngayVao,
+        dp.NgayTra AS ngayTra,
+        dp.NgayDat AS ngayDat,
+        DATEDIFF(dp.NgayTra, CURDATE()) AS thoiGianConLai
+      FROM datphong dp
+      JOIN user u ON dp.MaKH = u.ID
+      JOIN phong p ON dp.MaPhong = p.MaPhong
+      WHERE dp.TrangThai = 'DA_THUE';
+    `;
+    const [bookings] = await db.query(query);
+
+    // Định dạng thời gian còn lại
+    const formattedBookings = bookings.map(booking => ({
+      ...booking,
+      thoiGianConLai: booking.thoiGianConLai > 0 ? `${booking.thoiGianConLai} ngày` : '0 ngày',
+      gia: booking.gia,
+      datPhongId: booking.MaDatPhong,
+      ngayVao: formatDateLocal(booking.ngayVao),
+      ngayTra: formatDateLocal(booking.ngayTra),
+      ngayDat: formatDateLocal(booking.ngayDat),
+    }));
+
+    res.status(200).json({ bookings: formattedBookings });
+  } catch (err) {
+    console.error('Error fetching booked rooms:', err);
+    res.status(500).json({ message: 'Error fetching booked rooms', error: err.message });
+  }
+};
+
+// Lấy danh sách phòng đã thanh toán (trạng thái DA_THANH_TOAN)
+const getPaidBookings = async (req, res) => {
+  try {
+    const db = await dbPromise;
+
+    const query = `
+      SELECT 
+        dp.MaDatPhong,
+        u.HoTen AS ten,
+        u.SoDienThoai AS sdt,
+        p.TenLoaiPhong AS phong,
+        p.GiaPhong AS gia,
+        dp.NgayNhan AS ngayVao,
+        dp.NgayTra AS ngayTra,
+        dp.NgayDat AS ngayDat,
+        DATEDIFF(dp.NgayTra, CURDATE()) AS thoiGianConLai,
+        DATEDIFF(dp.NgayTra, dp.NgayNhan) AS thoiGian
+      FROM datphong dp
+      JOIN user u ON dp.MaKH = u.ID
+      JOIN phong p ON dp.MaPhong = p.MaPhong
+      WHERE dp.TrangThai = 'DA_THANH_TOAN';
+    `;
+    const [bookings] = await db.query(query);
+
+    // Định dạng thời gian còn lại và thoiGian
+    const formattedBookings = bookings.map(booking => ({
+      ...booking,
+      thoiGianConLai: booking.thoiGianConLai > 0 ? `${booking.thoiGianConLai} ngày` : '0 ngày',
+      thoiGian: `${booking.thoiGian} ngày`,
+      gia: booking.gia,
+      datPhongId: booking.MaDatPhong,
+      ngayVao: formatDateLocal(booking.ngayVao),
+      ngayTra: formatDateLocal(booking.ngayTra),
+      ngayDat: formatDateLocal(booking.ngayDat),
+    }));
+
+    res.status(200).json({ bookings: formattedBookings });
+  } catch (err) {
+    console.error('Error fetching paid bookings:', err);
+    res.status(500).json({ message: 'Error fetching paid bookings', error: err.message });
+  }
+};
+
+// Lấy tất cả danh sách đặt phòng (các trạng thái)
+const getAllBookings = async (req, res) => {
+  try {
+    const db = await dbPromise;
+
+    const query = `
+      SELECT 
+        dp.MaDatPhong,
+        u.HoTen AS ten,
+        u.SoDienThoai AS sdt,
+        p.TenLoaiPhong AS phong,
+        p.GiaPhong AS gia,
+        dp.NgayNhan AS ngayVao,
+        dp.NgayTra AS ngayTra,
+        dp.NgayDat AS ngayDat,
+        DATEDIFF(dp.NgayTra, CURDATE()) AS thoiGianConLai,
+        dp.TrangThai
+      FROM datphong dp
+      JOIN user u ON dp.MaKH = u.ID
+      JOIN phong p ON dp.MaPhong = p.MaPhong;
+    `;
+    const [bookings] = await db.query(query);
+
+    // Định dạng thời gian còn lại
+    const formattedBookings = bookings.map(booking => ({
+      ...booking,
+      thoiGianConLai: booking.thoiGianConLai > 0 ? `${booking.thoiGianConLai} ngày` : '0 ngày',
+      gia: booking.gia,
+      datPhongId: booking.MaDatPhong,
+      ngayVao: formatDateLocal(booking.ngayVao),
+      ngayTra: formatDateLocal(booking.ngayTra),
+      ngayDat: formatDateLocal(booking.ngayDat),
+      TrangThai: booking.TrangThai === 'DA_THUE' ? 'Đã Thuê' :
+                 booking.TrangThai === 'DA_THANH_TOAN' ? 'Đã Thanh Toán' :
+                 booking.TrangThai === 'DA_HUY' ? 'Đã Hủy' : booking.TrangThai,
+    }));
+
+    res.status(200).json({ bookings: formattedBookings });
+  } catch (err) {
+    console.error('Error fetching all bookings:', err);
+    res.status(500).json({ message: 'Error fetching all bookings', error: err.message });
+  }
+};
+
 module.exports = {
   createBooking,
   cancelBooking,
   getBookings,
   updateBookingStatus,
+  getBookedRoomsCount,
+  getCancelledRoomsCount,
+  getBookedRooms,
+  getPaidBookings,
+  getAllBookings,
 };

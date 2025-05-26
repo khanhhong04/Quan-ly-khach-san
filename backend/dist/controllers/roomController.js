@@ -101,8 +101,45 @@ const getRoomById = async (req, res) => {
     res.status(500).json({ message: 'Error fetching rooms', error: err.message });
   }
 };
+// thống kê cho admin
+const getRoomStats = async (req, res) => {
+  try {
+    const db = await dbPromise;
+
+    // Lấy tổng số loại phòng (distinct TenLoaiPhong)
+    const [roomTypes] = await db.query(`
+      SELECT COUNT(DISTINCT TenLoaiPhong) as loaiPhong
+      FROM phong
+    `);
+
+    // Lấy tổng số phòng
+    const [totalRooms] = await db.query(`
+      SELECT COUNT(*) as tongPhong
+      FROM phong
+    `);
+
+    // Lấy số phòng đang trống (Trạng thái TRONG)
+    const [availableRooms] = await db.query(`
+      SELECT COUNT(*) as phongTrong
+      FROM phong
+      WHERE TrangThai = 'TRONG'
+    `);
+
+    const stats = {
+      loaiPhong: roomTypes[0].loaiPhong,
+      tongPhong: totalRooms[0].tongPhong,
+      phongTrong: availableRooms[0].phongTrong,
+    };
+
+    res.status(200).json(stats);
+  } catch (err) {
+    console.error('Error fetching room stats:', err);
+    res.status(500).json({ message: 'Error fetching room stats', error: err.message });
+  }
+};
 
 module.exports = {
   getAvailableRooms,
-  getRoomById
+  getRoomById,
+  getRoomStats
 };

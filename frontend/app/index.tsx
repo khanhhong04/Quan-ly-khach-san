@@ -4,7 +4,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'reac
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = "http://192.168.1.197:3001/api/auth";
+const API_URL = "http://192.168.3.102:3001/api/auth";
 
 const LoginScreen: React.FC = () => {
   const [taiKhoan, setTaiKhoan] = useState<string>('');

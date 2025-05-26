@@ -188,5 +188,15 @@ const adminLogin = async (req, res) => {
     }
 };
 
+// Lấy tổng số tài khoản
+const getTotalUsers = async (req, res) => {
+    try {
+        const [results] = await db.execute("SELECT COUNT(*) as totalUsers FROM user");
+        res.json({ khachDangKy: results[0].totalUsers });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
 // Export các hàm
-module.exports = { loginUser, registerUser, forgotPassword, verifyOTPAndResetPassword, verifyToken, adminLogin };
+module.exports = { loginUser, registerUser, forgotPassword, verifyOTPAndResetPassword, verifyToken, adminLogin, getTotalUsers };

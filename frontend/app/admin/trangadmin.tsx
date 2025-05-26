@@ -5,6 +5,7 @@ import Sidebar from '../admin/Sidebar';
 import DashboardContent from '../admin/DashboardContent';
 import PhongMoiDat from '../admin/PhongMoiDat';
 import XacNhanThanhToan from '../admin/XacNhanThanhToan';
+import HoSoDatPhong from './HoSoDatPhong';
 // (Các component khác import tương tự nếu cần)
 
 const AdminDashboardScreen: React.FC = () => {
@@ -14,7 +15,11 @@ const AdminDashboardScreen: React.FC = () => {
     switch (currentScreen) {
       case 'PhongMoiDat':
         return <PhongMoiDat />;
+      case 'XacNhanThanhToan':
+        return <XacNhanThanhToan />;
       // case 'XacNhanThanhToan':
+      case 'HoSoDatPhong':
+        return <HoSoDatPhong />
       // case 'HoSoDatPhong':
       default:
         return <DashboardContent />;

@@ -43,7 +43,7 @@ export default function SearchResults() {
     const fetchRooms = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch("http://192.168.1.197:3001/api/rooms", {
+        const response = await fetch("http://192.168.3.102:3001/api/rooms", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -67,73 +67,79 @@ export default function SearchResults() {
     };
 
     const findRoomCombinations = (roomsData: any[]) => {
-      // Không lọc TrangThai, vì backend đã trả về các phòng trống
-      let availableRooms = roomsData;
-      if (floor !== null) {
-        availableRooms = availableRooms.filter((room: any) => room.Tang === floor);
-      }
-      console.log("Phòng trống sau khi lọc:", availableRooms);
+  let availableRooms = roomsData;
+  if (floor !== null) {
+    availableRooms = availableRooms.filter((room: any) => room.Tang === floor);
+  }
+  console.log("Phòng trống sau khi lọc:", availableRooms);
 
-      const newCombinations: Room[][] = [];
+  const newCombinations: Room[][] = [];
 
-      const generateCombinations = (
-        currentCombo: Room[],
-        startIndex: number,
-        targetPeople: number,
-        maxRooms: number
-      ) => {
-        const totalPeople = currentCombo.reduce(
-          (sum, room) => sum + (room.maxPeople || 0),
-          0
-        );
+  const generateCombinations = (
+    currentCombo: Room[],
+    startIndex: number,
+    targetPeople: number,
+    maxRoomsAllowed: number
+  ) => {
+    const totalPeople = currentCombo.reduce(
+      (sum, room) => sum + (room.maxPeople || 0),
+      0
+    );
 
-        if (currentCombo.length === maxRooms || totalPeople >= targetPeople) {
-          if (currentCombo.length > 0) {
-            newCombinations.push([...currentCombo]);
-            console.log("Tổ hợp tìm thấy:", currentCombo);
-          }
-          return;
-        }
+    // Nếu tổng số người đủ hoặc vượt yêu cầu, thêm tổ hợp
+    if (totalPeople >= targetPeople) {
+      newCombinations.push([...currentCombo]);
+      console.log("Tổ hợp tìm thấy:", currentCombo);
+      return;
+    }
 
-        for (let i = startIndex; i < availableRooms.length; i++) {
-          const room = availableRooms[i];
-          const formattedRoom: Room = {
-            id: room.MaPhong.toString(),
-            name: `Phòng ${room.SoPhong}`,
-            type: room.TenLoaiPhong,
-            price: parseFloat(room.GiaPhong),
-            maxPeople: room.SoNguoiToiDa,
-            floor: room.Tang || 0,
-            images: room.images.map((img: string) => `http://192.168.1.197:3001${img}`),
-          };
-          currentCombo.push(formattedRoom);
-          generateCombinations(currentCombo, i + 1, targetPeople, maxRooms);
-          currentCombo.pop();
-        }
+    // Giới hạn số phòng tối đa (ví dụ: 5 phòng)
+    if (currentCombo.length >= maxRoomsAllowed) {
+      return;
+    }
+
+    for (let i = startIndex; i < availableRooms.length; i++) {
+      const room = availableRooms[i];
+      const formattedRoom: Room = {
+        id: room.MaPhong.toString(),
+        name: `Phòng ${room.SoPhong}`,
+        type: room.TenLoaiPhong,
+        price: parseFloat(room.GiaPhong),
+        maxPeople: room.SoNguoiToiDa,
+        floor: room.Tang || 0,
+        images: room.images.map((img: string) => `http://192.168.3.102:3001${img}`),
       };
+      currentCombo.push(formattedRoom);
+      generateCombinations(currentCombo, i + 1, targetPeople, maxRoomsAllowed);
+      currentCombo.pop();
+    }
+  };
 
-      console.log("Số người:", adults, "Số phòng tối đa:", rooms);
-      generateCombinations([], 0, adults, rooms);
+  console.log("Số người:", adults, "Số phòng yêu cầu:", rooms);
+  // Nếu yêu cầu 1 phòng nhưng không đủ người, thử với tối đa 5 phòng
+  const maxRoomsToTry = Math.min(5, availableRooms.length); // Giới hạn tối đa 5 phòng
+  if (rooms === 1) {
+    // Đầu tiên thử với 1 phòng
+    generateCombinations([], 0, adults, 1);
 
-      if (newCombinations.length === 0 && availableRooms.length > 0) {
-        const defaultRoom = availableRooms[0];
-        const formattedRoom: Room = {
-          id: defaultRoom.MaPhong.toString(),
-          name: `Phòng ${defaultRoom.SoPhong}`,
-          type: defaultRoom.TenLoaiPhong,
-          price: parseFloat(defaultRoom.GiaPhong),
-          maxPeople: defaultRoom.SoNguoiToiDa,
-          floor: defaultRoom.Tang || 0,
-          images: defaultRoom.images.map((img: string) => `http://192.168.1.197:3001${img}`),
-        };
-        newCombinations.push([formattedRoom]);
-        console.log("Tổ hợp mặc định:", newCombinations);
-      }
+    // Nếu không có tổ hợp, thử với nhiều phòng
+    if (newCombinations.length === 0) {
+      generateCombinations([], 0, adults, maxRoomsToTry);
+    }
+  } else {
+    // Nếu yêu cầu nhiều phòng, giữ nguyên logic cũ
+    generateCombinations([], 0, adults, rooms);
+  }
 
-      console.log("Tất cả tổ hợp:", newCombinations);
-      setCombinations(newCombinations);
-      setCurrentImageIndices(newCombinations.map(() => 0));
-    };
+  // Nếu vẫn không có tổ hợp, thông báo
+  if (newCombinations.length === 0) {
+    console.log("Không tìm thấy tổ hợp nào phù hợp.");
+  }
+
+  console.log("Tất cả tổ hợp:", newCombinations);
+  setCombinations(newCombinations);
+  setCurrentImageIndices(newCombinations.map(() => 0));
+};
 
     fetchRooms();
   }, [checkInDate, checkOutDate, rooms, adults, floor]);

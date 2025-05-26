@@ -1,5 +1,5 @@
 const express = require("express");
-const { loginUser, registerUser, forgotPassword, verifyOTPAndResetPassword, verifyToken } = require("../controllers/authController");
+const { loginUser, registerUser, forgotPassword, verifyOTPAndResetPassword, verifyToken, getTotalUsers } = require("../controllers/authController");
 
 const router = express.Router();
 
@@ -17,5 +17,8 @@ router.post("/verify-otp", verifyOTPAndResetPassword);
 
 // Xác minh token
 router.get("/verify-token", verifyToken);
+
+// Lấy tổng số tài khoản
+router.get("/total-users", getTotalUsers);
 
 module.exports = router;

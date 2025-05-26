@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-const API_URL = 'http://192.168.1.197:3001/api';
+const API_URL = 'http://192.168.3.102:3001/api';
 
 interface Booking {
   MaDatPhong: number;
@@ -24,7 +24,7 @@ interface Booking {
   NgayTra: string;
   MaPhong: string;
   TenPhong?: string;
-  TrangThai: 'DA_THUE' | 'DANG_SU_DUNG' | 'TRONG' | 'DA_HUY';
+  TrangThai: 'DA_THUE' | 'DANG_SU_DUNG' | 'TRONG' | 'DA_HUY' | 'DA_THANH_TOAN';
   GhiChu?: string;
 }
 
@@ -148,9 +148,12 @@ const HuyPhongScreen: React.FC = () => {
             Ngày trả: {new Date(item.NgayTra).toLocaleDateString('vi-VN')}
           </Text>
           <Text style={styles.bookingText}>
-            Trạng thái: {item.TrangThai === 'DA_THUE' ? 'Đã thuê' : 
-                        item.TrangThai === 'DANG_SU_DUNG' ? 'Đang sử dụng' : 
-                        item.TrangThai === 'TRONG' ? 'Trống' : 'Đã hủy'}
+            Trạng thái: {item.TrangThai === 'DA_THUE' ? 'Đã Thuê' : 
+                        item.TrangThai === 'DANG_SU_DUNG' ? 'Đang Sử Dụng' : 
+                        item.TrangThai === 'TRONG' ? 'Trống' : 
+                        item.TrangThai === 'DA_HUY' ? 'Đã Hủy' : 
+                        item.TrangThai === 'DA_THANH_TOAN' ? 'Đã Thanh Toán' : 
+                        item.TrangThai}
           </Text>
           {item.GhiChu && <Text style={styles.bookingText}>Ghi chú: {item.GhiChu}</Text>}
         </View>
