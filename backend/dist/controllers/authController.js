@@ -176,7 +176,14 @@ const adminLogin = async (req, res) => {
             return res.status(401).json({ success: false, message: "Sai tài khoản hoặc mật khẩu!" });
         }
 
-        const token = jwt.sign({ id: user.ID, role: user.RoleID }, process.env.JWT_SECRET, { expiresIn: "1d" });
+        
+
+      // Thêm isAdmin vào token dựa trên RoleID
+        const token = jwt.sign(
+            { id: user.ID, role: user.RoleID, isAdmin: user.RoleID === 3 },
+            process.env.JWT_SECRET,
+            { expiresIn: "1d" }
+        );
         res.json({
             success: true,
             message: "Đăng nhập admin thành công!",
@@ -197,6 +204,16 @@ const getTotalUsers = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+// Trong authController.js, thêm hàm mới
+const getAllUsers = async (req, res) => {
+  try {
+    const db = require("../config/database");
+    const [results] = await db.execute("SELECT ID, HoTen, Email, SoDienThoai, TaiKhoan, RoleID FROM User");
+    res.status(200).json({ users: results });
+  } catch (err) {
+    console.error('Error fetching all users:', err);
+    res.status(500).json({ message: 'Error fetching all users', error: err.message });
+  }
+};
 
-// Export các hàm
-module.exports = { loginUser, registerUser, forgotPassword, verifyOTPAndResetPassword, verifyToken, adminLogin, getTotalUsers };
+module.exports = { loginUser, registerUser, forgotPassword, verifyOTPAndResetPassword, verifyToken, adminLogin, getTotalUsers, getAllUsers };

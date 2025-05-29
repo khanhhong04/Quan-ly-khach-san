@@ -46,8 +46,8 @@ const createMoMoPaymentUrl = async (req, res) => {
     const orderId = `ORDER-${bookingIdNum}-${Date.now()}`;
     const requestId = orderId;
     const orderInfo = `Thanh toan dat phong ${bookingIdNum}`;
-    const redirectUrl = process.env.MOMO_REDIRECT_URL || "https://93fa-14-232-191-188.ngrok-free.app               /api/payments/momo_return";
-    const ipnUrl = process.env.MOMO_IPN_URL || "https://93fa-14-232-191-188.ngrok-free.app               /api/payments/momo_ipn";
+    const redirectUrl = process.env.MOMO_REDIRECT_URL || "https://99bb-2402-800-61c7-848f-e0ad-4259-8fe5-7168.ngrok-free.app               /api/payments/momo_return";
+    const ipnUrl = process.env.MOMO_IPN_URL || "https://99bb-2402-800-61c7-848f-e0ad-4259-8fe5-7168.ngrok-free.app               /api/payments/momo_ipn";
     const amountStr = amount.toString();
     const requestType = "payWithMethod";
     const extraData = "";
@@ -114,7 +114,7 @@ const handleMoMoReturn = async (req, res) => {
     const expectedSignature = crypto.createHmac('sha256', secretKey)
       .update(rawSignature)
       .digest('hex');
-
+      
     console.log("MoMo Return - Received Query:", req.query);
     console.log("MoMo Return - Calculated Signature:", expectedSignature);
     console.log("MoMo Return - Received Signature:", signature);
@@ -132,10 +132,27 @@ const handleMoMoReturn = async (req, res) => {
       return res.status(400).json({ message: "Thanh toán không thành công.", resultCode, message });
     }
 
-    // Không cần kiểm tra lại và xử lý giao dịch, vì IPN đã làm việc này
-    // Chỉ redirect về deep link
+    // Trả về HTML với JavaScript để mở deep link cho Expo Go
     console.log("MoMo Return - Redirecting to app with bookingId:", bookingId);
-    res.redirect(`myapp://payment-result?bookingId=${bookingId}`);
+    const deepLink = `exp://192.168.1.134:8081/--/payment-result?bookingId=${bookingId}`;
+    res.setHeader('Content-Type', 'text/html');
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Redirecting...</title>
+        </head>
+        <body>
+          <script>
+            window.location = "${deepLink}";
+            // Fallback nếu deep link không hoạt động
+            setTimeout(() => {
+              alert("Không thể quay lại ứng dụng. Vui lòng mở ứng dụng thủ công.");
+            }, 1000);
+          </script>
+        </body>
+      </html>
+    `);
   } catch (error) {
     console.error("Lỗi khi xử lý phản hồi MoMo:", error.message);
     res.status(500).json({ message: "Lỗi khi xử lý phản hồi MoMo.", error: error.message });

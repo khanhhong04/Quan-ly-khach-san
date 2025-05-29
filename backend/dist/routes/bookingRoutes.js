@@ -18,5 +18,7 @@ router.get("/booked-rooms", getBookedRooms);
 router.get("/paid-bookings", bookingController.getPaidBookings);
 // Lấy tất cả danh sách đặt phòng
 router.get("/all", authMiddleware, bookingController.getAllBookings);
+// Thêm route cho phê duyệt hủy
+router.patch('/:id/approve-cancel', authMiddleware, bookingController.approveCancellation);
 
 module.exports = router;

@@ -30,7 +30,7 @@ const HoSoDatPhong = () => {
           return;
         }
 
-        const response = await fetch("http://192.168.3.102:3001/api/bookings/all", {
+        const response = await fetch("http://192.168.1.134:3001/api/bookings/all", {
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`,

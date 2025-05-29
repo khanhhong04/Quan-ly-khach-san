@@ -8,6 +8,7 @@ import {
   ScrollView,
   SafeAreaView,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -109,6 +110,12 @@ export default function ConfirmBooking() {
     if (!validatePhoneNumber(phoneNumber)) {
       setPhoneError("Số điện thoại không đúng định dạng.");
       return;
+    }
+
+    // Thêm thông báo và log khi đặt nhiều phòng
+    if (rooms.length >= 2) {
+      console.log("Bạn đã đặt nhiều phòng:", rooms.map((room) => room.name).join(", "));
+      Alert.alert("Thông báo", "Bạn đã đặt nhiều phòng: " + rooms.map((room) => room.name).join(", "));
     }
 
     setIsLoading(true);

@@ -22,6 +22,12 @@ const Sidebar: React.FC<Props> = ({ onNavigate }) => {
       <TouchableOpacity onPress={() => onNavigate('HoSoDatPhong')}>
         <Text style={styles.link}>Hồ sơ đặt phòng</Text>
       </TouchableOpacity>
+      <TouchableOpacity onPress={() => onNavigate('Phong')}>
+        <Text style={styles.link}>Danh sách phòng</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => onNavigate('KhachHang')}>
+        <Text style={styles.link}>Danh sách tài khoản</Text>
+      </TouchableOpacity>
     </View>
   );
 };

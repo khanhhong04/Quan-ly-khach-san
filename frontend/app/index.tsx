@@ -4,7 +4,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'reac
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = "http://192.168.3.102:3001/api/auth";
+const API_URL = "http://192.168.1.134:3001/api/auth";
 
 const LoginScreen: React.FC = () => {
   const [taiKhoan, setTaiKhoan] = useState<string>('');
@@ -34,7 +34,7 @@ const LoginScreen: React.FC = () => {
 
     const requestData = {
       TaiKhoan: taiKhoan,
-      MatKhau: matKhau
+      MatKhau: matKhau,
     };
     
     console.log("📤 Gửi request:", requestData);
@@ -46,6 +46,9 @@ const LoginScreen: React.FC = () => {
 
       if (response.data.success) {
         const { token, user } = response.data;
+
+        console.log("🔑 Token sau khi đăng nhập:", token); // Log token chi tiết
+        console.log("👤 User:", user); // Log thông tin user
 
         await AsyncStorage.setItem('authToken', token);
         await AsyncStorage.setItem('userInfo', JSON.stringify(user));

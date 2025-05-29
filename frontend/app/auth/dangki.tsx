@@ -14,10 +14,21 @@ export default function SignupScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreeTerms, setAgreeTerms] = useState(false);
 
+  // Hàm kiểm tra định dạng email
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
 const handleSignup = async () => {
   if (!fullName || !phoneNumber || !email || !username || !password || !confirmPassword) {
     Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin.');
+    return;
+  }
+
+  if (!validateEmail(email)) {
+    console.log("Email không đúng định dạng:", email); // Thêm log
+    Alert.alert('Lỗi', 'Email không đúng định dạng.');
     return;
   }
 
@@ -32,7 +43,7 @@ const handleSignup = async () => {
   }
 
   try {
-    const response = await axios.post('http://192.168.3.102:3001/api/auth/register', { 
+    const response = await axios.post('http://192.168.1.134:3001/api/auth/register', { 
       HoTen: fullName,
       Email: email,
       SoDienThoai: phoneNumber,
@@ -40,13 +51,20 @@ const handleSignup = async () => {
       MatKhau: password,
     });
 
+    console.log("Tạo tài khoản thành công. Tài khoản:", username);
     Alert.alert('Thành công', 'Tạo tài khoản thành công!');
     router.push('/');
-  }catch (error) {
+  } catch (error) {
     console.error('Lỗi đăng ký:', error);
   
     if (axios.isAxiosError(error)) {
-      Alert.alert('Lỗi', error.response?.data?.message || 'Đăng ký thất bại!');
+      const errorMessage = error.response?.data?.message || 'Đăng ký thất bại!';
+      if (errorMessage.toLowerCase().includes('email') || errorMessage.toLowerCase().includes('already exists')) {
+        console.log("Email đã được đăng ký:", email);
+      } else if (errorMessage.toLowerCase().includes('username') || errorMessage.toLowerCase().includes('tai khoan') || errorMessage.toLowerCase().includes('already exists')) {
+        console.log("Tài khoản đã tồn tại:", username);
+      }
+      Alert.alert('Lỗi', errorMessage);
     } else {
       Alert.alert('Lỗi', 'Có lỗi xảy ra, vui lòng thử lại!');
     }

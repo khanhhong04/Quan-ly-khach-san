@@ -168,52 +168,72 @@ export default function PaymentScreen() {
 
   // Xử lý deep link khi quay lại từ MoMo
   useEffect(() => {
-  const handleDeepLink = async (event: { url: string }) => {
-    const { url } = event;
-    console.log("Received deep link:", url); // Thêm log
-    
-    if (url.startsWith("myapp://payment-result")) {
-      console.log("Processing payment-result deep link:", url); // Thêm log
-      const urlParams = new URLSearchParams(url.split("?")[1]);
-      const bookingId = urlParams.get("bookingId");
-      const storedBookingId = await AsyncStorage.getItem("lastBookingId");
-      const finalBookingId = bookingId || storedBookingId || "N/A";
-      console.log("Final bookingId:", finalBookingId); // Thêm log
+    const handleDeepLink = async (event: { url: string }) => {
+      const { url } = event;
+      console.log("Received deep link:", url);
+      
+      // Kiểm tra deep link của Expo Go: exp://<IP>:<port>/--/payment-result
+      if (url.includes("/--/payment-result")) {
+        console.log("Processing payment-result deep link:", url);
+        const urlParams = new URLSearchParams(url.split("?")[1]);
+        const bookingId = urlParams.get("bookingId");
+        const error = urlParams.get("error");
+        const storedBookingId = await AsyncStorage.getItem("lastBookingId");
+        const finalBookingId = bookingId || storedBookingId || "N/A";
+        console.log("Final bookingId:", finalBookingId);
 
-      Alert.alert(
-        "Thành công",
-        `Thanh toán thành công! Mã đặt phòng: ${finalBookingId}.`,
-        [
-          {
-            text: "OK",
-            onPress: async () => {
-              console.log("Navigating to /home/trangchu"); // Thêm log
-              await AsyncStorage.removeItem("reservationStartTime");
-              await AsyncStorage.removeItem("lastBookingId");
-              router.replace("/home/trangchu");
-            },
-          },
-        ]
-      );
-    } else {
-      console.log("Deep link does not match payment-result:", url); // Thêm log
-    }
-  };
+        if (error) {
+          Alert.alert(
+            "Thanh toán thất bại",
+            decodeURIComponent(error),
+            [
+              {
+                text: "OK",
+                onPress: async () => {
+                  console.log("Navigating to /home/trangchu after failure");
+                  await AsyncStorage.removeItem("reservationStartTime");
+                  await AsyncStorage.removeItem("lastBookingId");
+                  router.replace("/home/trangchu");
+                },
+              },
+            ]
+          );
+        } else {
+          Alert.alert(
+            "Thành công",
+            `Thanh toán thành công! Mã đặt phòng: ${finalBookingId}.`,
+            [
+              {
+                text: "OK",
+                onPress: async () => {
+                  console.log("Navigating to /home/trangchu after success");
+                  await AsyncStorage.removeItem("reservationStartTime");
+                  await AsyncStorage.removeItem("lastBookingId");
+                  router.replace("/home/trangchu");
+                },
+              },
+            ]
+          );
+        }
+      } else {
+        console.log("Deep link does not match payment-result:", url);
+      }
+    };
 
-  const subscription = Linking.addEventListener("url", handleDeepLink);
-  const handleInitialUrl = async () => {
-    const initialUrl = await Linking.getInitialURL();
-    console.log("Initial URL:", initialUrl); // Thêm log
-    if (initialUrl) {
-      handleDeepLink({ url: initialUrl });
-    }
-  };
-  handleInitialUrl();
+    const subscription = Linking.addEventListener("url", handleDeepLink);
+    const handleInitialUrl = async () => {
+      const initialUrl = await Linking.getInitialURL();
+      console.log("Initial URL:", initialUrl);
+      if (initialUrl) {
+        handleDeepLink({ url: initialUrl });
+      }
+    };
+    handleInitialUrl();
 
-  return () => {
-    subscription.remove();
-  };
-}, [router]);
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -228,7 +248,8 @@ export default function PaymentScreen() {
         throw new Error("Vui lòng đăng nhập để thanh toán.");
       }
 
-      const res = await fetch("http://192.168.3.102:3001/api/payments/create_momo_payment_url", {
+      console.log("Creating MoMo payment for bookingId:", bookingId);
+      const res = await fetch("http://192.168.1.134:3001/api/payments/create_momo_payment_url", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -241,10 +262,11 @@ export default function PaymentScreen() {
       if (!res.ok) {
         throw new Error(result.message || "Không thể tạo URL thanh toán MoMo.");
       }
-      console.log("MoMo Payment URL:", result.paymentUrl); // Thêm log để kiểm tra
+      console.log("MoMo Payment URL:", result.paymentUrl);
 
       return result.paymentUrl;
     } catch (error: any) {
+      console.error("Error creating MoMo payment:", error);
       setErrorMessage(error.message || "Lỗi khi tạo URL thanh toán MoMo.");
       return null;
     }
@@ -309,7 +331,8 @@ export default function PaymentScreen() {
           GhiChu: notes,
         };
 
-        const res = await fetch("http://192.168.3.102:3001/api/bookings", {
+        console.log("Creating booking for room:", room.id);
+        const res = await fetch("http://192.168.1.134:3001/api/bookings", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -332,6 +355,10 @@ export default function PaymentScreen() {
       }
 
       const bookingId = bookingResults[0].bookingId;
+      console.log("Booking successful, bookingId:", bookingId);
+      // Thêm log và thông báo
+      console.log("Phòng đã đặt thành công nhưng chưa thanh toán.");
+      Alert.alert("Thông báo", `Phòng đã đặt thành công với mã đặt phòng: ${bookingId}. Vui lòng hoàn tất thanh toán để xác nhận!`);
 
       // Lưu bookingId vào AsyncStorage trước khi mở URL thanh toán
       await AsyncStorage.setItem("lastBookingId", bookingId.toString());
@@ -339,7 +366,7 @@ export default function PaymentScreen() {
       if (paymentMethod === "digital_wallet" && digitalWallet === "momo") {
         const paymentUrl = await createMoMoPayment(bookingId);
         if (paymentUrl) {
-          // Mở URL thanh toán trong trình duyệt
+          console.log("Opening MoMo payment URL:", paymentUrl);
           await Linking.openURL(paymentUrl);
         } else {
           throw new Error("Không thể tạo URL thanh toán MoMo.");
@@ -364,7 +391,9 @@ export default function PaymentScreen() {
           <Icon name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Thanh toán</Text>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity onPress={() => router.push("/home/trangchu")}>
+          <Icon name="home-outline" size={24} color="#000" />
+        </TouchableOpacity>
       </View>
 
       {isRoomReserved && (

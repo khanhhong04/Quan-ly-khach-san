@@ -8,6 +8,9 @@ const ForgotPassword = () => {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [step, setStep] = useState(1); // Bước 1: Nhập email, Bước 2: Nhập OTP và mật khẩu mới
+  const [otpRequestCount, setOtpRequestCount] = useState(0); // Đếm số lần gửi OTP
+  const [isLocked, setIsLocked] = useState(false); // Trạng thái khóa
+  const [lockTime, setLockTime] = useState<number | null>(null); // Thời gian khóa
   const router = useRouter();
 
   const handleSendOTP = async () => {
@@ -16,8 +19,26 @@ const ForgotPassword = () => {
       return;
     }
 
+    // Kiểm tra nếu đang bị khóa
+    if (isLocked && lockTime) {
+      const currentTime = Date.now();
+      const timeElapsed = (currentTime - lockTime) / 1000 / 60; // Tính thời gian đã trôi qua (phút)
+      if (timeElapsed < 10) {
+        console.log("Gửi mã OTP quá 3 lần. Vui lòng chờ 10 phút để thử lại. Email:", email); // Thêm log
+        Alert.alert('Lỗi', 'Bạn đã gửi mã OTP quá 3 lần. Vui lòng chờ 10 phút để thử lại!');
+        return;
+      } else {
+        // Hết thời gian khóa, reset trạng thái
+        setIsLocked(false);
+        setLockTime(null);
+        setOtpRequestCount(0);
+      }
+    }
+
     try {
-      const response = await fetch('http://192.168.3.102:3001/api/auth/forgot-password', {
+      setOtpRequestCount((prev) => prev + 1); // Tăng số lần gửi OTP
+
+      const response = await fetch('http://192.168.1.134:3001/api/auth/forgot-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -27,9 +48,18 @@ const ForgotPassword = () => {
 
       const data = await response.json();
       if (response.ok) {
+        console.log("Mã OTP quên mật khẩu đã được gửi đến email:", email);
         Alert.alert('Thành công', data.message || 'Mã OTP đã được gửi đến email của bạn!');
         setStep(2); // Chuyển sang bước 2
       } else {
+        if (otpRequestCount + 1 >= 3) {
+          setIsLocked(true);
+          setLockTime(Date.now()); // Ghi lại thời gian khóa
+          console.log("Gửi mã OTP quá 3 lần. Vui lòng chờ 10 phút để thử lại. Email:", email); // Thêm log
+          Alert.alert('Lỗi', 'Bạn đã gửi mã OTP quá 3 lần. Vui lòng chờ 10 phút để thử lại!');
+        } else if (data.message.toLowerCase().includes('email') || data.message.toLowerCase().includes('khong ton tai') || data.message.toLowerCase().includes('not found')) {
+          console.log("Email không tồn tại trong hệ thống:", email);
+        }
         Alert.alert('Lỗi', data.message || 'Không thể gửi mã OTP. Vui lòng thử lại!');
       }
     } catch (error) {
@@ -45,7 +75,7 @@ const ForgotPassword = () => {
     }
 
     try {
-      const response = await fetch('http://192.168.3.102:3001/api/auth/verify-otp', {
+      const response = await fetch('http://192.168.1.134:3001/api/auth/verify-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -59,7 +89,11 @@ const ForgotPassword = () => {
 
       const data = await response.json();
       if (response.ok) {
+        console.log("Đặt lại mật khẩu thành công cho email:", email); // Thêm log
         Alert.alert('Thành công', data.message || 'Mật khẩu đã được khôi phục thành công.');
+        setOtpRequestCount(0); // Reset số lần gửi OTP khi đặt lại mật khẩu thành công
+        setIsLocked(false);
+        setLockTime(null);
         router.push('/'); // Chuyển hướng về trang đăng nhập
       } else {
         Alert.alert('Lỗi', data.message || 'Mã OTP không hợp lệ hoặc đã hết hạn!');

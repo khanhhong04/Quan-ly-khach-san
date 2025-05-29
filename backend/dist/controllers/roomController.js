@@ -1,6 +1,8 @@
 const dbPromise = require('../config/database');
 const fs = require('fs');
 const path = require('path');
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
 const getAvailableRooms = async (req, res) => {
   const { checkIn, checkOut } = req.body;
@@ -138,8 +140,132 @@ const getRoomStats = async (req, res) => {
   }
 };
 
+const getAllRooms = async (req, res) => {
+  try {
+    const db = await dbPromise;
+    const query = `
+      SELECT MaPhong, SoPhong, Tang, TenLoaiPhong, SoNguoiToiDa, MoTa, GiaPhong, TrangThai
+      FROM phong
+    `;
+    const [results] = await db.query(query);
+
+    const formattedResults = results.map(room => ({
+      ...room,
+      GiaPhong: parseFloat(room.GiaPhong),
+    }));
+
+    res.status(200).json({ rooms: formattedResults });
+  } catch (err) {
+    console.error('Error fetching all rooms:', err);
+    res.status(500).json({ message: 'Error fetching all rooms', error: err.message });
+  }
+};
+
+const addRoom = async (req, res) => {
+  try {
+    const { SoPhong, Tang, TenLoaiPhong, SoNguoiToiDa, MoTa, GiaPhong, TrangThai } = req.body;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ message: 'Không có token' });
+    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.role !== 3) {
+      return res.status(403).json({ message: 'Chỉ admin mới có quyền thêm phòng' });
+    }
+
+    if (!SoPhong || !Tang || !TenLoaiPhong || !SoNguoiToiDa || !GiaPhong || !TrangThai) {
+      return res.status(400).json({ message: 'Vui lòng nhập đầy đủ thông tin' });
+    }
+
+    const [result] = await dbPromise.execute(
+      'INSERT INTO phong (SoPhong, Tang, TenLoaiPhong, SoNguoiToiDa, MoTa, GiaPhong, TrangThai) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [SoPhong, Tang, TenLoaiPhong, SoNguoiToiDa, MoTa, GiaPhong, TrangThai]
+    );
+    res.status(201).json({ message: 'Thêm phòng thành công', MaPhong: result.insertId });
+  } catch (err) {
+    console.error('Error adding room:', err);
+    res.status(500).json({ message: 'Error adding room', error: err.message });
+  }
+};
+
+const updateRoom = async (req, res) => {
+  try {
+    const { SoPhong } = req.params; // Thay MaPhong bằng SoPhong
+    console.log('SoPhong received:', SoPhong); // Log để debug
+    const { Tang, TenLoaiPhong, SoNguoiToiDa, MoTa, GiaPhong, TrangThai } = req.body;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ message: 'Không có token' });
+    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.role !== 3) {
+      return res.status(403).json({ message: 'Chỉ admin mới có quyền sửa phòng' });
+    }
+
+    if (!SoPhong || (!Tang && !TenLoaiPhong && !SoNguoiToiDa && !MoTa && !GiaPhong && !TrangThai)) {
+      return res.status(400).json({ message: 'Vui lòng cung cấp thông tin để cập nhật' });
+    }
+
+    const updateFields = [];
+    const values = [];
+    if (Tang) { updateFields.push('Tang = ?'); values.push(Tang); }
+    if (TenLoaiPhong) { updateFields.push('TenLoaiPhong = ?'); values.push(TenLoaiPhong); }
+    if (SoNguoiToiDa) { updateFields.push('SoNguoiToiDa = ?'); values.push(SoNguoiToiDa); }
+    if (MoTa) { updateFields.push('MoTa = ?'); values.push(MoTa); }
+    if (GiaPhong) { updateFields.push('GiaPhong = ?'); values.push(GiaPhong); }
+    if (TrangThai) { updateFields.push('TrangThai = ?'); values.push(TrangThai); }
+    values.push(SoPhong); // Sử dụng SoPhong trong WHERE clause
+
+    const query = `UPDATE phong SET ${updateFields.join(', ')} WHERE SoPhong = ?`; // Thay MaPhong bằng SoPhong
+    const [result] = await dbPromise.execute(query, values);
+    console.log('Update result:', result); // Log để debug
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Phòng không tồn tại' });
+    }
+    res.status(200).json({ message: 'Cập nhật phòng thành công' });
+  } catch (err) {
+    console.error('Error updating room:', err);
+    res.status(500).json({ message: 'Error updating room', error: err.message });
+  }
+};
+
+const deleteRoom = async (req, res) => {
+  try {
+    const { SoPhong } = req.params; // Thay MaPhong bằng SoPhong
+    console.log('SoPhong received for deletion:', SoPhong); // Log để debug
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ message: 'Không có token' });
+    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.role !== 3) {
+      return res.status(403).json({ message: 'Chỉ admin mới có quyền xóa phòng' });
+    }
+
+    if (!SoPhong) {
+      return res.status(400).json({ message: 'Vui lòng cung cấp số phòng' });
+    }
+
+    const [result] = await dbPromise.execute('DELETE FROM phong WHERE SoPhong = ?', [SoPhong]); // Thay MaPhong bằng SoPhong
+    console.log('Delete result:', result); // Log để debug
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Phòng không tồn tại' });
+    }
+    res.status(200).json({ message: 'Xóa phòng thành công' });
+  } catch (err) {
+    console.error('Error deleting room:', err);
+    res.status(500).json({ message: 'Error deleting room', error: err.message });
+  }
+};
+
 module.exports = {
   getAvailableRooms,
   getRoomById,
-  getRoomStats
+  getRoomStats,
+  getAllRooms,
+  addRoom,
+  updateRoom,
+  deleteRoom
 };

@@ -8,13 +8,14 @@ import {
   Alert,
   ActivityIndicator,
   SafeAreaView,
+  Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-const API_URL = 'http://192.168.3.102:3001/api';
+const API_URL = 'http://192.168.1.134:3001/api';
 
 interface Booking {
   MaDatPhong: number;
@@ -24,7 +25,7 @@ interface Booking {
   NgayTra: string;
   MaPhong: string;
   TenPhong?: string;
-  TrangThai: 'DA_THUE' | 'DANG_SU_DUNG' | 'TRONG' | 'DA_HUY' | 'DA_THANH_TOAN';
+  TrangThai: 'DA_THUE' | 'DANG_SU_DUNG' | 'TRONG' | 'DA_HUY' | 'DA_THANH_TOAN' | 'CHO_XU_LY_HUY';
   GhiChu?: string;
 }
 
@@ -89,6 +90,9 @@ const HuyPhongScreen: React.FC = () => {
         return;
       }
 
+      const booking = bookings.find((b) => b.MaDatPhong === bookingId);
+      const isPaid = booking?.TrangThai === 'DA_THANH_TOAN';
+
       const response = await fetch(`${API_URL}/bookings/${bookingId}/cancel`, {
         method: 'PATCH',
         headers: {
@@ -101,11 +105,17 @@ const HuyPhongScreen: React.FC = () => {
       console.log('Phản hồi API cancel:', { bookingId, result });
 
       if (response.ok) {
-        Alert.alert('Thành công', 'Hủy đặt phòng thành công');
+        if (isPaid) {
+          console.log("Hủy phòng thành công (đã thanh toán). Mã đặt phòng:", bookingId, "- Thông báo hoàn tiền sẽ được gửi qua email.");
+          Alert.alert("Thành công", "Hủy phòng thành công! Thông báo hoàn tiền sẽ được gửi qua email.");
+        } else {
+          console.log("Hủy phòng thành công, đang chờ phê duyệt từ admin. Mã đặt phòng:", bookingId);
+          Alert.alert('Thành công', 'Yêu cầu hủy đặt phòng đã được gửi, chờ phê duyệt từ admin');
+        }
         setBookings((prev) =>
           prev.map((booking) =>
             booking.MaDatPhong === bookingId
-              ? { ...booking, TrangThai: 'DA_HUY' }
+              ? { ...booking, TrangThai: 'CHO_XU_LY_HUY' }
               : booking
           )
         );
@@ -118,10 +128,57 @@ const HuyPhongScreen: React.FC = () => {
     }
   };
 
+  const createMoMoPayment = async (bookingId: number): Promise<string | null> => {
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('Vui lòng đăng nhập để thanh toán.');
+      }
+
+      const res = await fetch(`${API_URL}/payments/create_momo_payment_url`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ bookingId }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.message || 'Không thể tạo URL thanh toán MoMo.');
+      }
+      console.log('MoMo Payment URL:', result.paymentUrl);
+      return result.paymentUrl;
+    } catch (error: any) {
+      Alert.alert('Lỗi', error.message || 'Lỗi khi tạo URL thanh toán MoMo.');
+      return null;
+    }
+  };
+
+  const handlePayment = async (bookingId: number) => {
+    const paymentUrl = await createMoMoPayment(bookingId);
+    if (paymentUrl) {
+      await Linking.openURL(paymentUrl);
+      await AsyncStorage.setItem('lastBookingId', bookingId.toString());
+    }
+  };
+
   const confirmCancel = (bookingId: number) => {
+    const currentDate = new Date();
+    const booking = bookings.find((b) => b.MaDatPhong === bookingId);
+    if (booking) {
+      const checkInDate = new Date(booking.NgayNhan);
+      if (checkInDate <= currentDate) {
+        console.log("Không thể hủy đặt phòng vì đã đến ngày check-in. Mã đặt phòng:", bookingId); // Thêm log
+        Alert.alert('Lỗi', 'Không thể hủy đặt phòng vì đã đến ngày check-in.');
+        return;
+      }
+    }
+
     Alert.alert(
       'Xác nhận',
-      'Bạn có chắc muốn hủy đặt phòng này?',
+      'Bạn có chắc muốn hủy đặt phòng này? Yêu cầu sẽ được gửi đến admin để phê duyệt.',
       [
         { text: 'Hủy', style: 'cancel' },
         {
@@ -135,7 +192,8 @@ const HuyPhongScreen: React.FC = () => {
   };
 
   const renderBookingItem = ({ item }: { item: Booking }) => {
-    const canCancel = item.TrangThai === 'DA_THUE' || item.TrangThai === 'DANG_SU_DUNG';
+    const canCancel = item.TrangThai === 'DA_THUE' || item.TrangThai === 'DANG_SU_DUNG' || item.TrangThai === 'DA_THANH_TOAN';
+    const canPay = item.TrangThai === 'DA_THUE';
     return (
       <View style={styles.bookingItem}>
         <View style={styles.bookingInfo}>
@@ -153,18 +211,29 @@ const HuyPhongScreen: React.FC = () => {
                         item.TrangThai === 'TRONG' ? 'Trống' : 
                         item.TrangThai === 'DA_HUY' ? 'Đã Hủy' : 
                         item.TrangThai === 'DA_THANH_TOAN' ? 'Đã Thanh Toán' : 
+                        item.TrangThai === 'CHO_XU_LY_HUY' ? 'Chờ Xử Lý Hủy' : 
                         item.TrangThai}
           </Text>
           {item.GhiChu && <Text style={styles.bookingText}>Ghi chú: {item.GhiChu}</Text>}
         </View>
-        {canCancel && (
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => confirmCancel(item.MaDatPhong)}
-          >
-            <Text style={styles.cancelButtonText}>Hủy</Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.buttonContainer}>
+          {canPay && (
+            <TouchableOpacity
+              style={styles.payButton}
+              onPress={() => handlePayment(item.MaDatPhong)}
+            >
+              <Text style={styles.payButtonText}>Chờ thanh toán</Text>
+            </TouchableOpacity>
+          )}
+          {canCancel && (
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => confirmCancel(item.MaDatPhong)}
+            >
+              <Text style={styles.cancelButtonText}>Hủy</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     );
   };
@@ -178,7 +247,7 @@ const HuyPhongScreen: React.FC = () => {
         >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hủy Đặt Phòng</Text>
+        <Text style={styles.headerTitle}>Thông Tin Đặt Phòng</Text>
       </View>
       {loading ? (
         <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
@@ -195,6 +264,8 @@ const HuyPhongScreen: React.FC = () => {
     </SafeAreaView>
   );
 };
+
+export default HuyPhongScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -250,13 +321,28 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 4,
   },
+  buttonContainer: {
+    justifyContent: 'space-between',
+  },
+  payButton: {
+    backgroundColor: '#FFA500',
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
+  payButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   cancelButton: {
     backgroundColor: '#FF3B30',
     borderRadius: 6,
     paddingVertical: 8,
     paddingHorizontal: 12,
     alignSelf: 'flex-start',
-    marginTop: 8,
   },
   cancelButtonText: {
     color: '#fff',
@@ -264,5 +350,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
-export default HuyPhongScreen;

@@ -51,7 +51,7 @@ const DashboardContent: React.FC = () => {
 
         // Lấy dữ liệu phòng từ API /api/rooms/stats
         const fetchRoomStats = async () => {
-          const response = await fetch('http://192.168.3.102:3001/api/rooms/stats', {
+          const response = await fetch('http://192.168.1.134:3001/api/rooms/stats', {
             headers: { "Authorization": `Bearer ${token}` },
           });
           if (!response.ok) throw new Error('Phản hồi API không thành công');
@@ -66,7 +66,7 @@ const DashboardContent: React.FC = () => {
 
         // Lấy số lượng phòng đã đặt từ API /api/bookings/stats/booked
         const fetchBookedRoomsCount = async () => {
-          const response = await fetch('http://192.168.3.102:3001/api/bookings/stats/booked', {
+          const response = await fetch('http://192.168.1.134:3001/api/bookings/stats/booked', {
             headers: { "Authorization": `Bearer ${token}` },
           });
           if (!response.ok) throw new Error('Phản hồi API không thành công');
@@ -79,7 +79,7 @@ const DashboardContent: React.FC = () => {
 
         // Lấy số lượng phòng đã hủy từ API /api/bookings/stats/cancelled
         const fetchCancelledRoomsCount = async () => {
-          const response = await fetch('http://192.168.3.102:3001/api/bookings/stats/cancelled', {
+          const response = await fetch('http://192.168.1.134:3001/api/bookings/stats/cancelled', {
             headers: { "Authorization": `Bearer ${token}` },
           });
           if (!response.ok) throw new Error('Phản hồi API không thành công');
@@ -92,7 +92,7 @@ const DashboardContent: React.FC = () => {
 
         // Lấy tổng số khách hàng đăng ký từ API /api/auth/total-users
         const fetchRegisteredUsersCount = async () => {
-          const response = await fetch('http://192.168.3.102:3001/api/auth/total-users', {
+          const response = await fetch('http://192.168.1.134:3001/api/auth/total-users', {
             headers: { "Authorization": `Bearer ${token}` },
           });
           if (!response.ok) throw new Error('Phản hồi API không thành công');
@@ -105,7 +105,7 @@ const DashboardContent: React.FC = () => {
 
         // Lấy tổng doanh thu từ API /api/payments/total-revenue
         const fetchTotalRevenue = async () => {
-          const response = await fetch('http://192.168.3.102:3001/api/payments/total-revenue', {
+          const response = await fetch('http://192.168.1.134:3001/api/payments/total-revenue', {
             headers: { "Authorization": `Bearer ${token}` },
           });
           if (!response.ok) throw new Error('Phản hồi API không thành công');

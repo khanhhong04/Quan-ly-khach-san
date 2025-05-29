@@ -6,6 +6,8 @@ import DashboardContent from '../admin/DashboardContent';
 import PhongMoiDat from '../admin/PhongMoiDat';
 import XacNhanThanhToan from '../admin/XacNhanThanhToan';
 import HoSoDatPhong from './HoSoDatPhong';
+import Phong from '../admin/phong'; // Thêm import này
+import KhachHang from '../admin/KhachHang';
 // (Các component khác import tương tự nếu cần)
 
 const AdminDashboardScreen: React.FC = () => {
@@ -21,6 +23,10 @@ const AdminDashboardScreen: React.FC = () => {
       case 'HoSoDatPhong':
         return <HoSoDatPhong />
       // case 'HoSoDatPhong':
+      case 'Phong':
+        return <Phong />;
+      case 'KhachHang':
+        return <KhachHang />;
       default:
         return <DashboardContent />;
     }

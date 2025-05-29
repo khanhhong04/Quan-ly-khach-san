@@ -21,7 +21,7 @@ const PhongMoiDat: React.FC = () => {
   useEffect(() => {
     const fetchBookedRooms = async () => {
       try {
-        const response = await fetch('http://192.168.3.102:3001/api/bookings/booked-rooms');
+        const response = await fetch('http://192.168.1.134:3001/api/bookings/booked-rooms');
         if (!response.ok) {
           throw new Error('Phản hồi API không thành công');
         }
